@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sweety — Back-office Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f0f13;--surface:#18181f;--surface2:#22222c;--border:#2e2e3a;--accent:#7c6bff;--accent2:#ff6b9d;--accent3:#4ecdc4;--green:#2ecc71;--orange:#f39c12;--red:#e74c3c;--text:#f0f0f5;--text2:#8888a0;--text3:#55556a;--radius:14px;--radius-sm:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:48px;width:360px;text-align:center}
+.login-logo{font-family:'Syne',sans-serif;font-size:2.4rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.login-sub{color:var(--text2);font-size:.9rem;margin-bottom:36px}
+.pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:28px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);transition:all .2s}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pin-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:600;padding:16px;cursor:pointer;transition:all .15s}
+.pin-btn:hover{background:var(--border)}
+.pin-btn:active{transform:scale(.95)}
+.pin-btn.del{color:var(--accent2);font-size:1rem}
+.login-error{color:var(--red);font-size:.85rem;margin-top:16px;min-height:20px}
+#app{display:flex;min-height:100vh;flex-direction:column}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 16px;z-index:50}
+.sidebar-logo{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;padding:0 8px;margin-bottom:8px}
+.sidebar-sub{color:var(--text3);font-size:.75rem;padding:0 8px;margin-bottom:32px;text-transform:uppercase;letter-spacing:.08em}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:var(--radius-sm);color:var(--text2);font-size:.9rem;cursor:pointer;transition:all .15s;margin-bottom:2px}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(124,107,255,.15);color:var(--accent)}
+.nav-icon{font-size:1.1rem;width:22px;text-align:center}
+.sidebar-spacer{flex:1}
+.nav-logout{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:var(--radius-sm);color:var(--text3);font-size:.85rem;cursor:pointer;transition:all .15s}
+.nav-logout:hover{color:var(--red);background:rgba(231,76,60,.1)}
+.main{margin-left:240px;padding:32px;min-height:100vh}
+.page{display:none}
+.page.active{display:block}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.page-title{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:700}
+.page-sub{color:var(--text2);font-size:.9rem;margin-top:4px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.card-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.item-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative;transition:border-color .2s}
+.item-card:hover{border-color:var(--accent)}
+.item-card.inactive{opacity:.5}
+.item-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.item-dot{width:12px;height:12px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.item-name{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;flex:1;margin-left:10px}
+.item-meta{color:var(--text2);font-size:.82rem;margin-bottom:14px}
+.item-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--accent);color:white}
+.btn-primary:hover{background:#6a5ae0}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:rgba(231,76,60,.15);color:var(--red)}
+.btn-danger:hover{background:rgba(231,76,60,.3)}
+.btn-success{background:rgba(46,204,113,.15);color:var(--green)}
+.btn-success:hover{background:rgba(46,204,113,.3)}
+.btn-sm{padding:6px 11px;font-size:.78rem}
+.btn-icon{padding:7px}
+.form-group{margin-bottom:16px}
+.form-label{display:block;color:var(--text2);font-size:.82rem;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.form-control{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.92rem;padding:10px 14px;transition:border-color .15s}
+.form-control:focus{outline:none;border-color:var(--accent)}
+select.form-control{cursor:pointer}
+textarea.form-control{resize:vertical}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem}
+.modal-close{background:var(--surface2);border:none;color:var(--text2);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{color:var(--text)}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:.75rem;font-weight:500}
+.badge-green{background:rgba(46,204,113,.15);color:var(--green)}
+.badge-red{background:rgba(231,76,60,.15);color:var(--red)}
+.badge-orange{background:rgba(243,156,18,.15);color:var(--orange)}
+.badge-purple{background:rgba(124,107,255,.15);color:var(--accent)}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:var(--text3);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;padding:10px 14px;border-bottom:1px solid var(--border);font-weight:500}
+td{padding:13px 14px;border-bottom:1px solid rgba(46,46,58,.5);font-size:.9rem}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.color-swatch{width:36px;height:36px;border-radius:var(--radius-sm);border:2px solid var(--border);cursor:pointer;flex-shrink:0}
+.color-input-row{display:flex;gap:10px;align-items:center}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:100px;cursor:pointer;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s}
+.toggle input:checked+.toggle-slider{background:var(--accent)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(20px)}
+.empty{text-align:center;padding:48px 20px;color:var(--text3)}
+.empty-icon{font-size:2.5rem;margin-bottom:12px}
+.empty-text{font-size:.9rem}
+.section-title{font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin:24px 0 12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:5px 14px;font-size:.82rem;color:var(--text2);cursor:pointer;transition:all .15s}
+.chip.active{background:rgba(124,107,255,.2);border-color:var(--accent);color:var(--accent)}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.stat-val{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;margin-bottom:4px}
+.stat-label{color:var(--text2);font-size:.82rem}
+.vue-btn{background:none;border:none;color:var(--text2);padding:8px 16px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.85rem;transition:all .15s}
+.vue-btn.active{background:var(--accent);color:white}
+.vue-btn:hover:not(.active){color:var(--text)}
+.jauge-bar-wrap{background:var(--surface2);border-radius:100px;height:6px;overflow:hidden;flex:1}
+.jauge-bar-fill{height:100%;border-radius:100px;transition:width .3s}
+.resa-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#toast{position:fixed;bottom:28px;right:28px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;font-size:.88rem;z-index:9999;display:none;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+#toast.show{display:flex;align-items:center;gap:10px}
+#toast.success{border-color:var(--green)}
+#toast.error{border-color:var(--red)}
+.loader{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── CAISSE ── */
+#page-caisse{flex-direction:column;overflow:hidden;height:100%}
+.caisse-body{display:flex;flex:1;overflow:hidden;min-height:0}
+.cat-sidebar{width:120px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px;scrollbar-width:none}
+.cat-sidebar::-webkit-scrollbar{display:none}
+.cat-btn{padding:10px 8px;border-radius:var(--radius-sm);font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);color:var(--text2);transition:.15s;background:none;width:100%;text-align:left;display:flex;align-items:center;gap:6px;line-height:1.2}
+.cat-btn.active{background:var(--green);color:#000;border-color:var(--green)}
+.cat-btn:hover:not(.active){border-color:var(--green);color:var(--green)}
+.caisse-grid{flex:1;overflow-y:auto;padding:10px;display:grid;gap:8px;align-content:start;scrollbar-width:thin;scrollbar-color:var(--border) transparent;grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.cprod{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;cursor:pointer;transition:.15s}
+.cprod:hover{border-color:var(--border);background:var(--surface2);opacity:.9}
+.cprod:active{transform:scale(.97)}
+.cprod.with-opts{border-left:2px solid var(--accent)}
+.cprod-cat{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.cprod-nom{font-size:.88rem;font-weight:600;margin-bottom:5px;line-height:1.3}
+.cprod-prix{font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:600;color:var(--green)}
+.cprod-opts{font-size:.67rem;color:var(--accent);margin-top:3px}
+.pan-top{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pan-title{font-size:.92rem;font-weight:700;display:flex;align-items:center;gap:6px}
+.pan-count{background:var(--green);color:#000;border-radius:100px;font-size:.68rem;font-weight:700;padding:2px 7px}
+.pan-clear{background:none;border:none;color:var(--text3);cursor:pointer;font-size:.75rem;padding:4px 8px;border-radius:var(--radius-sm);transition:.15s}
+.pan-clear:hover{color:var(--red)}
+.client-bar{padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.client-add{display:flex;align-items:center;gap:7px;cursor:pointer;padding:7px 10px;border-radius:var(--radius-sm);border:1px dashed var(--border);color:var(--text2);font-size:.78rem;transition:.15s}
+.client-add:hover{border-color:var(--green);color:var(--green)}
+.client-info-bar{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:var(--radius-sm);background:var(--surface2);border:1px solid var(--border)}
+.ci-nom{font-weight:600;font-size:.82rem;color:var(--green)}
+.ci-sub{color:var(--text2);font-size:.7rem}
+.ci-rm{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1rem;padding:2px 6px}
+.ci-rm:hover{color:var(--red)}
+.pan-items{flex:1;overflow-y:auto;padding:8px}
+.pan-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:6px;font-size:.83rem}
+.pan-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px;margin-bottom:5px}
+.pi-row{display:flex;align-items:center;gap:7px}
+.pi-nom{flex:1;font-size:.83rem;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pi-prix{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--green);flex-shrink:0}
+.pi-qty{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.qb{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;transition:.15s}
+.qb:hover{border-color:var(--green);color:var(--green)}
+.qn{font-family:'JetBrains Mono',monospace;font-size:.8rem;min-width:16px;text-align:center}
+.pi-opts-tags{margin-top:5px;display:flex;flex-wrap:wrap;gap:3px}
+.pi-opt-tag{font-size:.68rem;background:rgba(124,107,255,.12);color:var(--accent);border-radius:100px;padding:2px 7px}
+.pi-meta{font-size:.68rem;color:var(--text3);margin-top:3px}
+.pan-footer{border-top:1px solid var(--border);padding:12px 14px;flex-shrink:0;background:var(--surface)}
+.total-row-c{display:flex;justify-content:space-between;margin-bottom:3px}
+.total-lbl{color:var(--text2);font-size:.8rem}
+.total-v{font-family:'JetBrains Mono',monospace;font-size:.82rem}
+.total-big{display:flex;justify-content:space-between;align-items:center;margin:10px 0 12px}
+.total-big-lbl{font-size:.95rem;font-weight:700}
+.total-big-v{font-family:'JetBrains Mono',monospace;font-size:1.35rem;font-weight:700;color:var(--green)}
+.pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.pay-btn{padding:13px;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;border:none;transition:.15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.pay-btn:active{transform:scale(.97)}
+.pay-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;pointer-events:none}
+.pay-cb{background:var(--green);color:#000}
+.pay-esp{background:#f39c12;color:#000}
+.caisse-topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.jp-wrap{display:flex;gap:8px;overflow-x:auto;flex:1;scrollbar-width:none}
+.jp-wrap::-webkit-scrollbar{display:none}
+.jp{display:flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:4px 9px;flex-shrink:0}
+.jp-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.jp-lbl{font-size:.7rem;color:var(--text2)}
+.jp-bar{width:36px;height:3px;background:var(--border);border-radius:100px;overflow:hidden}
+.jp-fill{height:100%;border-radius:100px;transition:.3s}
+.jp-v{font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:14px}
+.nk{height:52px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:1.2rem;font-weight:600;color:var(--text);cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center}
+.nk:active{transform:scale(.93)}
+.nk.del{color:var(--red)}
+.rendu-box{background:var(--surface2);border-radius:var(--radius-sm);padding:13px;text-align:center;margin-bottom:14px}
+.rendu-lbl{font-size:.75rem;color:var(--text2);margin-bottom:3px}
+.rendu-v{font-family:'JetBrains Mono',monospace;font-size:1.7rem;font-weight:700}
+.rendu-pos{color:var(--green)}
+.rendu-neg{color:var(--red)}
+.confirm-icon{font-size:2.8rem;text-align:center;margin:12px 0}
+.confirm-details{background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px}
+.cd-line{display:flex;justify-content:space-between;padding:4px 0;font-size:.83rem;border-bottom:1px solid var(--border)}
+.cd-line:last-child{border-bottom:none;font-weight:700;color:var(--green)}
+.opt-item-c{display:flex;align-items:center;gap:9px;padding:11px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:.15s;margin-bottom:7px}
+.opt-item-c.sel{border-color:var(--green);background:rgba(46,204,113,.06)}
+.opt-info{flex:1}
+.opt-nom{font-size:.86rem;font-weight:600}
+.opt-det{font-size:.7rem;color:var(--text2);margin-top:2px}
+.opt-px{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--green);flex-shrink:0}
+.nb-wrap-c{display:flex;align-items:center;gap:9px;margin-bottom:14px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)}
+.nb-lbl{flex:1;font-size:.85rem;color:var(--text2)}
+.nb-ctrl{display:flex;align-items:center;gap:7px}
+.nb-btn-c{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:.15s}
+.nb-btn-c:hover{border-color:var(--green);color:var(--green)}
+.nb-v{font-family:'JetBrains Mono',monospace;font-size:1.1rem;font-weight:600;min-width:26px;text-align:center}
+.opts-total-box{background:var(--surface2);border-radius:var(--radius-sm);padding:11px;margin-bottom:14px}
+.nav-item.caisse-nav.active{background:rgba(46,204,113,.15);color:var(--green)}
+
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">🌴 Sweety</div>
+    <div class="login-sub">Back-office administration</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="dot-0"></div><div class="pin-dot" id="dot-1"></div>
+      <div class="pin-dot" id="dot-2"></div><div class="pin-dot" id="dot-3"></div>
+    </div>
+    <div class="pin-grid">
+      <button class="pin-btn" onclick="pinPress('1')">1</button><button class="pin-btn" onclick="pinPress('2')">2</button><button class="pin-btn" onclick="pinPress('3')">3</button>
+      <button class="pin-btn" onclick="pinPress('4')">4</button><button class="pin-btn" onclick="pinPress('5')">5</button><button class="pin-btn" onclick="pinPress('6')">6</button>
+      <button class="pin-btn" onclick="pinPress('7')">7</button><button class="pin-btn" onclick="pinPress('8')">8</button><button class="pin-btn" onclick="pinPress('9')">9</button>
+      <button class="pin-btn" onclick="pinPress('')"></button><button class="pin-btn" onclick="pinPress('0')">0</button><button class="pin-btn del" onclick="pinDel()">⌫</button>
+    </div>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div id="app">
+  <nav class="sidebar">
+    <div class="sidebar-logo">🌴 Sweety</div>
+    <div class="sidebar-sub">Gestion</div>
+    <div class="nav-item caisse-nav active" onclick="showPage('caisse')" id="nav-caisse"><span class="nav-icon">🧾</span> Caisse</div>
+    <div class="nav-item" onclick="showPage('dashboard')" id="nav-dashboard"><span class="nav-icon">📊</span> Tableau de bord</div>
+    <div class="nav-item" onclick="showPage('reservations')" id="nav-reservations"><span class="nav-icon">📅</span> Réservations</div>
+    <div class="nav-item" onclick="showPage('activites')" id="nav-activites"><span class="nav-icon">🎯</span> Activités</div>
+    <div class="nav-item" onclick="showPage('formules')" id="nav-formules"><span class="nav-icon">📋</span> Formules & Options</div>
+    <div class="nav-item" onclick="showPage('creneaux')" id="nav-creneaux"><span class="nav-icon">🕐</span> Créneaux</div>
+    <div class="nav-item" onclick="showPage('produits')" id="nav-produits"><span class="nav-icon">🛒</span> Produits caisse</div>
+    <div class="nav-item" onclick="showPage('employes')" id="nav-employes"><span class="nav-icon">👥</span> Employés</div>
+    <div class="nav-item" onclick="showPage('parametres')" id="nav-parametres"><span class="nav-icon">⚙️</span> Paramètres</div>
+    <div class="sidebar-spacer"></div>
+    <div class="nav-logout" onclick="logout()"><span class="nav-icon">🚪</span> Déconnexion</div>
+  </nav>
+
+  <main class="main">
+
+
+    <!-- CAISSE -->
+    <div class="page active" id="page-caisse">
+      <!-- Jauges topbar -->
+      <div class="caisse-topbar">
+        <div class="jp-wrap" id="caisse-jauges"></div>
+        <button class="btn btn-secondary btn-sm" onclick="rafraichirJauges()" style="flex-shrink:0;margin-left:8px">↻</button>
+      </div>
+      <!-- Corps caisse : catégories | produits | panier -->
+      <div class="caisse-body">
+        <!-- Catégories verticales -->
+        <div class="cat-sidebar" id="cat-bar"></div>
+        <!-- Grille produits -->
+        <div class="caisse-grid" id="caisse-grid">
+          <div style="color:var(--text2);font-size:.85rem;padding:20px;display:flex;align-items:center;gap:8px"><div class="loader"></div> Chargement...</div>
+        </div>
+        <!-- Panier -->
+        <div class="caisse-panier">
+          <div class="pan-top">
+            <div class="pan-title">Panier <span class="pan-count" id="pan-count">0</span></div>
+            <button class="pan-clear" onclick="viderPanier()">Vider</button>
+          </div>
+          <div class="client-bar">
+            <div class="client-add" id="client-add" onclick="openClientModalCaisse()"><span>👤</span><span>Client (facture)</span></div>
+            <div class="client-info-bar" id="client-info" style="display:none">
+              <div><div class="ci-nom" id="ci-nom"></div><div class="ci-sub" id="ci-sub"></div></div>
+              <button class="ci-rm" onclick="removeCaisseClient()">×</button>
+            </div>
+          </div>
+          <div class="pan-items" id="pan-items"><div class="pan-empty"><div style="font-size:2rem;opacity:.3">🛒</div><div>Panier vide</div></div></div>
+          <div class="pan-footer">
+            <div class="total-row-c"><span class="total-lbl">Sous-total</span><span class="total-v" id="c-stotal">0,00 €</span></div>
+            <div class="total-big"><span class="total-big-lbl">TOTAL</span><span class="total-big-v" id="c-total">0,00 €</span></div>
+            <div class="pay-grid">
+              <button class="pay-btn pay-cb" onclick="payerCB()" id="btn-cb" disabled>💳 CB</button>
+              <button class="pay-btn pay-esp" onclick="openEspModal()" id="btn-esp" disabled>💵 Espèces</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="page" id="page-dashboard">
+      <div class="page-header"><div><div class="page-title">Tableau de bord</div><div class="page-sub" id="dashboard-date"></div></div></div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-val" id="stat-activites">—</div><div class="stat-label">Activités actives</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-formules">—</div><div class="stat-label">Formules configurées</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-produits">—</div><div class="stat-label">Produits caisse</div></div>
+        <div class="stat-card"><div class="stat-val" id="stat-creneaux">—</div><div class="stat-label">Créneaux configurés</div></div>
+      </div>
+      <div class="card"><div class="card-header"><div class="card-title">Activités</div></div><div id="dashboard-activites"><div class="loader"></div></div></div>
+    </div>
+
+    <!-- RÉSERVATIONS -->
+    <div class="page" id="page-reservations">
+      <div class="page-header">
+        <div><div class="page-title">Réservations</div><div class="page-sub" id="resa-sub"></div></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">
+            <button class="vue-btn active" id="vue-jour" onclick="setVue('jour')">Jour</button>
+            <button class="vue-btn" id="vue-semaine" onclick="setVue('semaine')">Semaine</button>
+            <button class="vue-btn" id="vue-mois" onclick="setVue('mois')">Mois</button>
+          </div>
+          <button class="btn btn-secondary" onclick="navDate(-1)">‹</button>
+          <button class="btn btn-secondary" onclick="goToday()">Aujourd'hui</button>
+          <button class="btn btn-secondary" onclick="navDate(1)">›</button>
+          <button class="btn btn-primary" onclick="openResaModal()">+ Réservation</button>
+        </div>
+      </div>
+      <div id="resa-content"></div>
+    </div>
+
+    <!-- ACTIVITÉS -->
+    <div class="page" id="page-activites">
+      <div class="page-header"><div><div class="page-title">Activités</div><div class="page-sub">Gérez les activités proposées</div></div><button class="btn btn-primary" onclick="openActiviteModal()">+ Nouvelle activité</button></div>
+      <div id="activites-list"><div class="loader"></div></div>
+    </div>
+
+    <!-- FORMULES -->
+    <div class="page" id="page-formules">
+      <div class="page-header"><div><div class="page-title">Formules & Options</div><div class="page-sub">Configurez les formules par activité</div></div></div>
+      <div class="card" style="margin-bottom:20px"><div class="chips" id="formules-activites-chips" style="margin-top:0"></div></div>
+      <div id="formules-content"></div>
+    </div>
+
+    <!-- CRÉNEAUX -->
+    <div class="page" id="page-creneaux">
+      <div class="page-header">
+        <div><div class="page-title">Créneaux horaires</div><div class="page-sub">Disponibilités par activité et par jour</div></div>
+        <button class="btn btn-primary" onclick="openCreneauModal(creneauxActiviteId)">+ Créneau</button>
+      </div>
+      <div class="card" style="margin-bottom:20px"><div class="chips" id="creneaux-activites-chips"></div></div>
+      <div id="creneaux-agenda"></div>
+    </div>
+
+    <!-- PRODUITS -->
+    <div class="page" id="page-produits">
+      <div class="page-header"><div><div class="page-title">Produits caisse</div><div class="page-sub">Snack, jetons et autres produits</div></div><button class="btn btn-primary" onclick="openProduitModal()">+ Nouveau produit</button></div>
+      <div class="section-title">Snack</div><div id="produits-snack" class="grid-3"></div>
+      <div class="section-title">Jetons</div><div id="produits-jetons" class="grid-3"></div>
+      <div class="section-title">Autres</div><div id="produits-autres" class="grid-3"></div>
+    </div>
+
+    <!-- EMPLOYÉS -->
+    <div class="page" id="page-employes">
+      <div class="page-header"><div><div class="page-title">Employés</div><div class="page-sub">Accès à l'application</div></div><button class="btn btn-primary" onclick="openEmployeModal()">+ Ajouter</button></div>
+      <div class="card"><div class="table-wrap"><table><thead><tr><th>Nom</th><th>Rôle</th><th>Manager</th><th>Statut</th><th>Actions</th></tr></thead><tbody id="employes-tbody"></tbody></table></div></div>
+    </div>
+
+    <!-- PARAMÈTRES -->
+    <div class="page" id="page-parametres">
+      <div class="page-header"><div><div class="page-title">Paramètres</div><div class="page-sub">Configuration globale</div></div></div>
+      <div class="card"><div id="parametres-list"></div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL ACTIVITÉ -->
+<div class="modal-overlay" id="modal-activite" style="display:none" onclick="if(event.target===this)closeModalActivite()">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title" id="modal-activite-title">Nouvelle activité</div><button class="modal-close" onclick="closeModalActivite()">×</button></div>
+  <input type="hidden" id="activite-id">
+  <div class="form-group"><label class="form-label">Nom *</label><input type="text" class="form-control" id="activite-nom" placeholder="Ex: Entrée simple"></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Slug *</label><input type="text" class="form-control" id="activite-slug" placeholder="entree-simple"></div>
+    <div class="form-group"><label class="form-label">Jauge max *</label><input type="number" class="form-control" id="activite-jauge" placeholder="50" min="1"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Durée par défaut (min)</label><input type="number" class="form-control" id="activite-duree" placeholder="120" min="15" step="15"></div>
+    <div class="form-group"><label class="form-label">Ordre</label><input type="number" class="form-control" id="activite-ordre" placeholder="1" min="0"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Couleur</label><div class="color-input-row"><input type="color" class="color-swatch" id="activite-couleur" value="#7c6bff"><input type="text" class="form-control" id="activite-couleur-text" placeholder="#7c6bff"></div></div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModalActivite()">Annuler</button><button class="btn btn-primary" onclick="saveActivite()">Enregistrer</button></div>
+</div></div>
+
+<!-- MODAL FORMULE -->
+<div class="modal-overlay" id="modal-formule" style="display:none" onclick="if(event.target===this)closeModalFormule()">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title" id="modal-formule-title">Nouvelle formule</div><button class="modal-close" onclick="closeModalFormule()">×</button></div>
+  <input type="hidden" id="formule-id"><input type="hidden" id="formule-activite-id">
+  <div class="form-group"><label class="form-label">Nom *</label><input type="text" class="form-control" id="formule-nom" placeholder="Ex: Simple, Boost VR..."></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Prix (€) *</label><input type="number" class="form-control" id="formule-prix" placeholder="100" min="0" step="0.5"></div>
+    <div class="form-group"><label class="form-label">Durée (min) *</label><input type="number" class="form-control" id="formule-duree" placeholder="120" min="15" step="15"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Nb personnes max</label><input type="number" class="form-control" id="formule-nb-max" placeholder="8" min="1"></div>
+    <div class="form-group"><label class="form-label">Ordre</label><input type="number" class="form-control" id="formule-ordre" placeholder="1" min="0"></div>
+  </div>
+  <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-control" id="formule-description" placeholder="Contenu de la formule..."></div>
+  <div class="form-group"><label class="form-label">ID Hiboutik</label><input type="number" class="form-control" id="formule-hiboutik" placeholder="ID produit dans Hiboutik"></div>
+  <div class="form-group">
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+      <label class="toggle"><input type="checkbox" id="formule-prix-par-personne"><span class="toggle-slider"></span></label>
+      <div><div style="font-size:.88rem;font-weight:500">Prix par personne</div><div style="font-size:.75rem;color:var(--text3)">Le prix sera multiplié par le nombre de personnes</div></div>
+    </label>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModalFormule()">Annuler</button><button class="btn btn-primary" onclick="saveFormule()">Enregistrer</button></div>
+</div></div>
+
+<!-- MODAL OPTION -->
+<div class="modal-overlay" id="modal-option" style="display:none" onclick="if(event.target===this)closeModalOption()">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title" id="modal-option-title">Nouvelle option</div><button class="modal-close" onclick="closeModalOption()">×</button></div>
+  <input type="hidden" id="option-id"><input type="hidden" id="option-formule-id">
+  <div class="form-group"><label class="form-label">Nom *</label><input type="text" class="form-control" id="option-nom" placeholder="Ex: Goûter, VR, Enfant supplémentaire..."></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Prix (€)</label><input type="number" class="form-control" id="option-prix" placeholder="0" min="0" step="0.5"></div>
+    <div class="form-group"><label class="form-label">Type</label><select class="form-control" id="option-type"><option value="checkbox">Case à cocher</option><option value="quantity">Quantité manuelle</option><option value="per_person">× Nb personnes (auto)</option></select></div>
+  </div>
+  <div class="form-group"><label class="form-label">⏱ Durée ajoutée (min) — 0 = aucune extension</label><input type="number" class="form-control" id="option-duree" placeholder="0" min="0" step="15"></div>
+  <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-control" id="option-description" placeholder="Détails..."></div>
+  <div class="form-group"><label class="form-label">ID Hiboutik</label><input type="number" class="form-control" id="option-hiboutik" placeholder="ID produit dans Hiboutik"></div>
+  <div class="form-group">
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+      <label class="toggle"><input type="checkbox" id="option-ajoute-jauge"><span class="toggle-slider"></span></label>
+      <div><div style="font-size:.88rem;font-weight:500">📊 Compte dans la jauge</div><div style="font-size:.75rem;color:var(--text3)">La quantité s'ajoute au nb de personnes pour le calcul de jauge</div></div>
+    </label>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModalOption()">Annuler</button><button class="btn btn-primary" onclick="saveOption()">Enregistrer</button></div>
+</div></div>
+
+<!-- MODAL CRÉNEAU -->
+<div class="modal-overlay" id="modal-creneau" style="display:none" onclick="if(event.target===this)closeModalCreneau()">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title">Nouveau créneau</div><button class="modal-close" onclick="closeModalCreneau()">×</button></div>
+  <input type="hidden" id="creneau-activite-id">
+  <div class="form-group"><label class="form-label">Heure de début *</label><input type="time" class="form-control" id="creneau-heure"></div>
+  <div class="form-group"><label class="form-label">Jour(s)</label><select class="form-control" id="creneau-jour"><option value="">Tous les jours</option><option value="0">Lundi</option><option value="1">Mardi</option><option value="2">Mercredi</option><option value="3">Jeudi</option><option value="4">Vendredi</option><option value="5">Samedi</option><option value="6">Dimanche</option></select></div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModalCreneau()">Annuler</button><button class="btn btn-primary" onclick="saveCreneau()">Ajouter</button></div>
+</div></div>
+
+<!-- MODAL PRODUIT -->
+<div class="modal-overlay" id="modal-produit" style="display:none" onclick="if(event.target===this)closeModalProduit()">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title" id="modal-produit-title">Nouveau produit</div><button class="modal-close" onclick="closeModalProduit()">×</button></div>
+  <input type="hidden" id="produit-id">
+  <div class="form-group"><label class="form-label">Nom *</label><input type="text" class="form-control" id="produit-nom" placeholder="Ex: Donut"></div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Prix (€) *</label><input type="number" class="form-control" id="produit-prix" placeholder="2.50" min="0" step="0.1"></div>
+    <div class="form-group"><label class="form-label">Catégorie *</label><select class="form-control" id="produit-categorie"><option value="snack">Snack</option><option value="jeton">Jeton</option><option value="autre">Autre</option></select></div>
+  </div>
+  <div class="form-group"><label class="form-label">ID Hiboutik (optionnel)</label><input type="number" class="form-control" id="produit-hiboutik" placeholder="ID produit dans Hiboutik"></div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModalProduit()">Annuler</button><button class="btn btn-primary" onclick="saveProduit()">Enregistrer</button></div>
+</div></div>
+
+<!-- MODAL EMPLOYÉ -->
+<div class="modal-overlay" id="modal-employe" style="display:none" onclick="if(event.target===this)closeModalEmploye()">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title" id="modal-employe-title">Nouvel employé</div><button class="modal-close" onclick="closeModalEmploye()">×</button></div>
+  <input type="hidden" id="employe-id-original">
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Identifiant *</label><input type="text" class="form-control" id="employe-id" placeholder="prenom"></div>
+    <div class="form-group"><label class="form-label">Nom affiché *</label><input type="text" class="form-control" id="employe-nom" placeholder="Prénom Nom"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">PIN (4 chiffres) *</label><input type="text" class="form-control" id="employe-pin" placeholder="0000" maxlength="4"></div>
+    <div class="form-group"><label class="form-label">Rôle</label><input type="text" class="form-control" id="employe-role" placeholder="Animateur"></div>
+  </div>
+  <div class="form-group"><label style="display:flex;align-items:center;gap:10px;cursor:pointer"><label class="toggle"><input type="checkbox" id="employe-manager"><span class="toggle-slider"></span></label>Manager (accès back-office)</label></div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModalEmploye()">Annuler</button><button class="btn btn-primary" onclick="saveEmploye()">Enregistrer</button></div>
+</div></div>
+
+<!-- MODAL RÉSERVATION -->
+<div class="modal-overlay" id="modal-resa" style="display:none" onclick="if(event.target===this)closeModalResa()">
+<div class="modal" style="max-width:640px" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title" id="modal-resa-title">Nouvelle réservation</div><button class="modal-close" onclick="closeModalResa()">×</button></div>
+  <input type="hidden" id="resa-id">
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Activité *</label><select class="form-control" id="resa-activite" onchange="onResaActiviteChange()"></select></div>
+    <div class="form-group"><label class="form-label">Formule</label><select class="form-control" id="resa-formule" onchange="onResaFormuleChange()"></select></div>
+  </div>
+  <div class="form-row-3">
+    <div class="form-group"><label class="form-label">Date *</label><input type="date" class="form-control" id="resa-date"></div>
+    <div class="form-group"><label class="form-label">Heure arrivée *</label><input type="time" class="form-control" id="resa-heure"></div>
+    <div class="form-group"><label class="form-label">Durée (min)</label><input type="number" class="form-control" id="resa-duree" placeholder="120" min="15" step="15" readonly style="opacity:.7"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label class="form-label">Nb enfants *</label><input type="number" class="form-control" id="resa-nb" placeholder="1" min="1" onchange="calcPrixTotal()"></div>
+    <div class="form-group"><label class="form-label">Nb adultes</label><input type="number" class="form-control" id="resa-adultes" placeholder="0" min="0"></div>
+  </div>
+  <div style="border-top:1px solid var(--border);margin:4px 0 16px;padding-top:16px">
+    <div style="color:var(--text3);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Client</div>
+    <div class="form-row"><div class="form-group"><label class="form-label">Nom *</label><input type="text" class="form-control" id="resa-nom" placeholder="Nom du client"></div><div class="form-group"><label class="form-label">Téléphone</label><input type="tel" class="form-control" id="resa-tel" placeholder="06 00 00 00 00"></div></div>
+    <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control" id="resa-email" placeholder="email@exemple.fr"></div>
+  </div>
+  <div id="resa-anniv-section" style="display:none;border-top:1px solid var(--border);margin:0 0 16px;padding-top:16px">
+    <div style="color:var(--text3);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">🎂 Anniversaire</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Prénom de l'enfant</label><input type="text" class="form-control" id="resa-prenom-enfant" placeholder="Prénom"></div>
+      <div class="form-group"><label class="form-label">Âge fêté</label><input type="number" class="form-control" id="resa-age-enfant" placeholder="7" min="1" max="18"></div>
+    </div>
+  </div>
+  <div id="resa-options-section" style="display:none;border-top:1px solid var(--border);margin:0 0 16px;padding-top:16px">
+    <div style="color:var(--text3);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Options</div>
+    <div id="resa-options-list" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+  <div style="border-top:1px solid var(--border);margin:0 0 0;padding-top:16px">
+    <div class="form-row-3">
+      <div class="form-group">
+        <label class="form-label">Montant total (€) <span style="color:var(--accent3);font-size:.7rem">auto</span></label>
+        <input type="number" class="form-control" id="resa-montant" placeholder="0" min="0" step="0.5">
+        <div id="prix-detail" style="color:var(--text3);font-size:.72rem;margin-top:4px;line-height:1.5"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Acompte reçu (€)</label><input type="number" class="form-control" id="resa-acompte" placeholder="0" min="0" step="0.5"></div>
+      <div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="resa-statut"><option value="confirmee">Confirmée</option><option value="attente">En attente</option><option value="soldee">Soldée</option><option value="annulee">Annulée</option><option value="no_show">No-show</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="resa-notes" rows="2" placeholder="Informations particulières..."></textarea></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModalResa()">Annuler</button><button class="btn btn-primary" onclick="saveResa()">Enregistrer</button></div>
+</div></div>
+
+<!-- MODAL DÉTAIL RÉSERVATION -->
+<div class="modal-overlay" id="modal-resa-detail" style="display:none" onclick="if(event.target===this)closeModalResaDetail()">
+<div class="modal" style="max-width:560px" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title" id="detail-title">Réservation</div><button class="modal-close" onclick="closeModalResaDetail()">×</button></div>
+  <div id="detail-content"></div>
+  <div class="modal-footer" id="detail-footer"></div>
+</div></div>
+
+
+<!-- MODAL OPTIONS PRODUIT CAISSE -->
+<div class="modal-overlay" id="mc-opts" style="display:none;z-index:600" onclick="if(event.target===this)this.style.display='none'">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title" id="mc-opts-title">Options</div><button class="modal-close" onclick="document.getElementById('mc-opts').style.display='none'">×</button></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div><label class="form-label">Date</label><input type="date" class="form-control" id="mc-date"></div>
+    <div><label class="form-label">Heure arrivée</label><input type="time" class="form-control" id="mc-heure"></div>
+  </div>
+  <div class="nb-wrap-c"><span class="nb-lbl">Nombre de personnes</span><div class="nb-ctrl"><button class="nb-btn-c" id="mc-nb-minus" onclick="cNb(-1)">−</button><span class="nb-v" id="mc-nb">1</span><button class="nb-btn-c" id="mc-nb-plus" onclick="cNb(1)">+</button></div></div>
+  <div id="mc-nb-info" style="font-size:.75rem;color:var(--text3);margin-top:-10px;margin-bottom:10px"></div>
+  <div id="mc-opts-list"></div>
+  <div class="opts-total-box"><div style="display:flex;justify-content:space-between;font-size:.85rem"><span style="color:var(--text2)">Total estimé</span><span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--green)" id="mc-total">0,00 €</span></div><div style="font-size:.7rem;color:var(--text3);margin-top:3px" id="mc-detail"></div></div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="document.getElementById('mc-opts').style.display='none'">Annuler</button><button class="btn btn-primary" onclick="addToCart()">Ajouter au panier</button></div>
+</div></div>
+
+<!-- MODAL CLIENT CAISSE -->
+<div class="modal-overlay" id="mc-client" style="display:none;z-index:700" onclick="if(event.target===this)this.style.display='none'">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title">👤 Client (facture)</div><button class="modal-close" onclick="document.getElementById('mc-client').style.display='none'">×</button></div>
+  <div class="form-group"><label class="form-label">Nom *</label><input type="text" class="form-control" id="cc-nom" placeholder="Nom du client"></div>
+  <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control" id="cc-email" placeholder="email@exemple.fr"></div>
+  <div class="form-group"><label class="form-label">Téléphone</label><input type="tel" class="form-control" id="cc-tel" placeholder="06 00 00 00 00"></div>
+  <div style="background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.2);border-radius:var(--radius-sm);padding:9px;font-size:.76rem;color:var(--text2)">ℹ️ Créé dans Hiboutik et rattaché à la vente.</div>
+  <div class="modal-footer"><button class="btn btn-secondary" onclick="document.getElementById('mc-client').style.display='none'">Annuler</button><button class="btn btn-primary" onclick="saveCaisseClient()">Confirmer</button></div>
+</div></div>
+
+<!-- MODAL ESPECES CAISSE -->
+<div class="modal-overlay" id="mc-esp" style="display:none;z-index:700" onclick="if(event.target===this)this.style.display='none'">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header"><div class="modal-title">💵 Paiement espèces</div><button class="modal-close" onclick="document.getElementById('mc-esp').style.display='none'">×</button></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0">
+    <div style="text-align:center;background:var(--surface2);border-radius:var(--radius-sm);padding:12px">
+      <div style="font-size:.75rem;color:var(--text2);margin-bottom:4px">À encaisser</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:700;color:var(--green)" id="mc-esp-total">0,00 €</div>
+    </div>
+    <div style="text-align:center;background:var(--surface2);border-radius:var(--radius-sm);padding:12px">
+      <div style="font-size:.75rem;color:var(--text2);margin-bottom:4px">Remis par client</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:1.6rem;font-weight:700;color:var(--orange)" id="mc-remis-display">0</div>
+    </div>
+  </div>
+  <div class="numpad">
+    <button class="nk" onclick="nk('1')">1</button><button class="nk" onclick="nk('2')">2</button><button class="nk" onclick="nk('3')">3</button>
+    <button class="nk" onclick="nk('4')">4</button><button class="nk" onclick="nk('5')">5</button><button class="nk" onclick="nk('6')">6</button>
+    <button class="nk" onclick="nk('7')">7</button><button class="nk" onclick="nk('8')">8</button><button class="nk" onclick="nk('9')">9</button>
+    <button class="nk" onclick="nk('.')">.</button><button class="nk" onclick="nk('0')">0</button><button class="nk del" onclick="nkdel()">⌫</button>
+  </div>
+  <div class="rendu-box"><div class="rendu-lbl">Rendu monnaie</div><div class="rendu-v" id="mc-rendu">—</div></div>
+  <div style="display:flex;gap:7px"><button class="btn btn-secondary" onclick="document.getElementById('mc-esp').style.display='none'" style="flex:1">Annuler</button><button class="btn btn-primary" onclick="finaliserEsp()" id="btn-esp-ok" disabled style="flex:2">✓ Valider</button></div>
+</div></div>
+
+<!-- MODAL CONFIRMATION VENTE -->
+<div class="modal-overlay" id="mc-confirm" style="display:none;z-index:700">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="confirm-icon">✅</div>
+  <div class="modal-title" style="text-align:center;margin-bottom:6px">Vente enregistrée</div>
+  <div style="text-align:center;color:var(--text2);font-size:.85rem;margin-bottom:16px" id="mc-confirm-msg"></div>
+  <div class="confirm-details" id="mc-confirm-details"></div>
+  <button class="btn btn-primary" onclick="nouvelleVente()" style="width:100%;padding:13px;justify-content:center">Nouvelle vente</button>
+</div></div>
+
+
+<div id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://kqasgptqvwpykjqqqnlg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxYXNncHRxdndweWtqcXFxbmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MDk0MTMsImV4cCI6MjA5MzI4NTQxM30.OYkx112Rvkgdr3H45mKjotsNXOuQGpHGCN0aCF9o0YM';
+const CODE_ADMIN = '1234';
+
+// ── SUPABASE ──
+async function sb(table, method='GET', body=null, filter='') {
+  const res = await fetch(SUPABASE_URL+'/rest/v1/'+table+filter, {
+    method,
+    headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const t = await res.text();
+  return t ? JSON.parse(t) : [];
+}
+
+// ── PIN ──
+let pin='';
+function pinPress(n){if(pin.length>=4)return;pin+=n;updateDots();if(pin.length===4)checkPin();}
+function pinDel(){pin=pin.slice(0,-1);updateDots();document.getElementById('login-error').textContent='';}
+function updateDots(){for(let i=0;i<4;i++)document.getElementById('dot-'+i).classList.toggle('filled',i<pin.length);}
+function checkPin(){
+  if(pin===CODE_ADMIN){document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='block';initApp();}
+  else{document.getElementById('login-error').textContent='Code incorrect';pin='';updateDots();}
+}
+function logout(){pin='';updateDots();document.getElementById('login-screen').style.display='flex';document.getElementById('app').style.display='none';}
+
+// ── NAV ──
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.getElementById('nav-'+page).classList.add('active');
+  ({caisse:initCaisse,dashboard:loadDashboard,reservations:loadReservations,activites:loadActivites,formules:loadFormulesPage,creneaux:loadCreneauxPage,produits:loadProduits,employes:loadEmployes,parametres:loadParametres}[page]||(() => {}))();
+}
+
+// ── INIT ──
+async function initApp(){
+  // Initialiser date dashboard
+  const dashDate = document.getElementById('dashboard-date');
+  if(dashDate) dashDate.textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  // Lancer la caisse directement
+  initCaisse();
+}
+
+// ── DASHBOARD ──
+async function loadDashboard(){
+  try{
+    const [a,f,p,c]=await Promise.all([sb('activites','GET',null,'?actif=eq.true'),sb('formules','GET',null,'?actif=eq.true'),sb('produits_caisse','GET',null,'?actif=eq.true'),sb('creneaux_config','GET',null,'?actif=eq.true')]);
+    document.getElementById('stat-activites').textContent=a.length;
+    document.getElementById('stat-formules').textContent=f.length;
+    document.getElementById('stat-produits').textContent=p.length;
+    document.getElementById('stat-creneaux').textContent=c.length;
+    const all=await sb('activites','GET',null,'?order=ordre.asc');
+    document.getElementById('dashboard-activites').innerHTML=all.map(a=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:12px"><div style="width:10px;height:10px;border-radius:50%;background:${a.couleur}"></div><span style="font-weight:500">${a.nom}</span></div><div style="display:flex;gap:12px;align-items:center"><span style="color:var(--text2);font-size:.85rem">Jauge : <b>${a.jauge_max}</b></span><span class="badge ${a.actif?'badge-green':'badge-red'}">${a.actif?'Actif':'Inactif'}</span></div></div>`).join('');
+  }catch(e){showToast('Erreur dashboard','error');}
+}
+
+// ── ACTIVITÉS ──
+let activitesList=[];
+async function loadActivites(){
+  document.getElementById('activites-list').innerHTML='<div class="loader"></div>';
+  activitesList=await sb('activites','GET',null,'?order=ordre.asc');
+  const el=document.getElementById('activites-list');
+  if(!activitesList.length){el.innerHTML='<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Aucune activité</div></div>';return;}
+  el.innerHTML='<div class="grid-3">'+activitesList.map(a=>`<div class="item-card ${!a.actif?'inactive':''}"><div class="item-card-top"><div class="item-dot" style="background:${a.couleur}"></div><div class="item-name">${a.nom}</div><span class="badge ${a.actif?'badge-green':'badge-red'}">${a.actif?'Actif':'Off'}</span></div><div class="item-meta">Jauge : <b>${a.jauge_max}</b> · ${a.duree_defaut_min}min</div><div class="item-actions"><button class="btn btn-secondary btn-sm" onclick="openActiviteModal('${a.id}')">✏️ Modifier</button><button class="btn ${a.actif?'btn-danger':'btn-success'} btn-sm" onclick="toggleActivite('${a.id}',${a.actif})">${a.actif?'⏸ Désactiver':'▶ Activer'}</button><button class="btn btn-danger btn-sm" onclick="deleteActivite('${a.id}')">🗑</button></div></div>`).join('')+'</div>';
+}
+function openActiviteModal(id=null){
+  const a=id?activitesList.find(x=>x.id===id):null;
+  document.getElementById('modal-activite-title').textContent=id?'Modifier':'Nouvelle activité';
+  document.getElementById('activite-id').value=a?.id||'';
+  document.getElementById('activite-nom').value=a?.nom||'';
+  document.getElementById('activite-slug').value=a?.slug||'';
+  document.getElementById('activite-jauge').value=a?.jauge_max||50;
+  document.getElementById('activite-duree').value=a?.duree_defaut_min||120;
+  document.getElementById('activite-ordre').value=a?.ordre||0;
+  document.getElementById('activite-couleur').value=a?.couleur||'#7c6bff';
+  document.getElementById('activite-couleur-text').value=a?.couleur||'#7c6bff';
+  document.getElementById('modal-activite').style.display='flex';
+}
+document.getElementById('activite-couleur').oninput=function(){document.getElementById('activite-couleur-text').value=this.value;};
+async function saveActivite(){
+  const id=document.getElementById('activite-id').value;
+  const data={nom:document.getElementById('activite-nom').value.trim(),slug:document.getElementById('activite-slug').value.trim().toLowerCase().replace(/\s+/g,'-'),jauge_max:parseInt(document.getElementById('activite-jauge').value),duree_defaut_min:parseInt(document.getElementById('activite-duree').value)||120,ordre:parseInt(document.getElementById('activite-ordre').value)||0,couleur:document.getElementById('activite-couleur').value};
+  if(!data.nom||!data.slug||!data.jauge_max){showToast('Nom, slug et jauge obligatoires','error');return;}
+  try{if(id)await sb('activites','PATCH',data,'?id=eq.'+id);else await sb('activites','POST',data);closeModalActivite();showToast(id?'Modifiée':'Créée','success');loadActivites();loadDashboard();}catch(e){showToast('Erreur : '+e.message,'error');}
+}
+async function toggleActivite(id,current){await sb('activites','PATCH',{actif:!current},'?id=eq.'+id);loadActivites();}
+async function deleteActivite(id){if(!confirm('Supprimer cette activité ?'))return;await sb('activites','DELETE',null,'?id=eq.'+id);showToast('Supprimée','success');loadActivites();}
+function closeModalActivite(){document.getElementById('modal-activite').style.display='none';}
+
+// ── FORMULES ──
+let formulesActiviteId=null,formulesList=[],allActivitesFormules=[];
+async function loadFormulesPage(){
+  allActivitesFormules=await sb('activites','GET',null,'?actif=eq.true&order=ordre.asc');
+  const chips=document.getElementById('formules-activites-chips');
+  chips.innerHTML=allActivitesFormules.map(a=>`<div class="chip ${formulesActiviteId===a.id?'active':''}" onclick="selectFormulesActivite('${a.id}',this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${a.couleur};margin-right:6px"></span>${a.nom}</div>`).join('');
+  if(!formulesActiviteId&&allActivitesFormules.length){formulesActiviteId=allActivitesFormules[0].id;chips.querySelector('.chip').classList.add('active');}
+  if(formulesActiviteId)loadFormules(formulesActiviteId);
+}
+async function selectFormulesActivite(id,el){formulesActiviteId=id;document.querySelectorAll('#formules-activites-chips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');loadFormules(id);}
+async function loadFormules(activiteId){
+  const el=document.getElementById('formules-content');
+  el.innerHTML='<div class="loader"></div>';
+  formulesList=await sb('formules','GET',null,'?activite_id=eq.'+activiteId+'&order=ordre.asc');
+  el.innerHTML=`<div class="card"><div class="card-header"><div class="card-title">Formules</div><button class="btn btn-primary btn-sm" onclick="openFormuleModal('${activiteId}')">+ Formule</button></div>${formulesList.length===0?'<div class="empty"><div class="empty-text">Aucune formule</div></div>':formulesList.map(f=>`<div style="padding:16px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div><span style="font-weight:600">${f.nom}</span><span class="badge badge-purple" style="margin-left:10px">${f.prix}€${f.prix_par_personne?' <span style="font-size:.7rem">/pers.</span>':''}</span><span style="color:var(--text3);font-size:.8rem;margin-left:8px">${f.duree_min}min${f.nb_personnes_max?' · max '+f.nb_personnes_max+' pers.':''}</span></div><div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" onclick="openFormuleModal('${activiteId}','${f.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteFormule('${f.id}','${activiteId}')">🗑</button></div></div><div id="options-${f.id}"><div class="loader" style="width:14px;height:14px;border-width:2px"></div></div></div>`).join('')}</div>`;
+  formulesList.forEach(f=>loadOptions(f.id));
+}
+function openFormuleModal(activiteId,formuleId=null){
+  document.getElementById('formule-activite-id').value=activiteId;
+  const f=formuleId?formulesList.find(x=>x.id===formuleId):null;
+  document.getElementById('modal-formule-title').textContent=formuleId?'Modifier':'Nouvelle formule';
+  document.getElementById('formule-id').value=f?.id||'';
+  document.getElementById('formule-nom').value=f?.nom||'';
+  document.getElementById('formule-prix').value=f?.prix||'';
+  document.getElementById('formule-duree').value=f?.duree_min||120;
+  document.getElementById('formule-nb-max').value=f?.nb_personnes_max||'';
+  document.getElementById('formule-ordre').value=f?.ordre||0;
+  document.getElementById('formule-description').value=f?.description||'';
+  document.getElementById('formule-prix-par-personne').checked=f?.prix_par_personne||false;
+  if(document.getElementById('formule-hiboutik'))document.getElementById('formule-hiboutik').value=f?.hiboutik_product_id||'';
+  document.getElementById('modal-formule').style.display='flex';
+}
+async function saveFormule(){
+  const id=document.getElementById('formule-id').value;
+  const activiteId=document.getElementById('formule-activite-id').value;
+  const data={activite_id:activiteId,nom:document.getElementById('formule-nom').value.trim(),prix:parseFloat(document.getElementById('formule-prix').value),duree_min:parseInt(document.getElementById('formule-duree').value),nb_personnes_max:parseInt(document.getElementById('formule-nb-max').value)||null,ordre:parseInt(document.getElementById('formule-ordre').value)||0,description:document.getElementById('formule-description').value.trim(),prix_par_personne:document.getElementById('formule-prix-par-personne').checked};
+  if(!data.nom||!data.prix||!data.duree_min){showToast('Nom, prix et durée obligatoires','error');return;}
+  try{if(id)await sb('formules','PATCH',data,'?id=eq.'+id);else await sb('formules','POST',data);closeModalFormule();showToast(id?'Modifiée':'Créée','success');loadFormules(activiteId);}catch(e){showToast('Erreur : '+e.message,'error');}
+}
+async function deleteFormule(id,activiteId){if(!confirm('Supprimer ?'))return;await sb('formules','DELETE',null,'?id=eq.'+id);showToast('Supprimée','success');loadFormules(activiteId);}
+function closeModalFormule(){document.getElementById('modal-formule').style.display='none';}
+
+// ── OPTIONS ──
+async function loadOptions(formuleId){
+  try{
+    const opts=await sb('options','GET',null,'?formule_id=eq.'+formuleId);
+    const el=document.getElementById('options-'+formuleId);
+    if(!el)return;
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">${opts.map(o=>`<span style="background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:4px 12px;font-size:.78rem;display:inline-flex;align-items:center;gap:5px"><span style="color:var(--text)">${o.nom}</span>${o.prix>0?'<span style="color:var(--accent)">+'+o.prix+'€</span>':''}${o.prix_par_personne?'<span style="color:var(--accent3);font-size:.7rem">/pers.</span>':''}${o.duree_ajoutee_min>0?'<span style="color:var(--accent3)">+'+o.duree_ajoutee_min+'min</span>':''}${o.type==='quantity'?'<span style="color:var(--orange);font-size:.7rem">×qté</span>':o.type==='per_person'?'<span style="color:var(--orange);font-size:.7rem">×pers.</span>':''}${o.ajoute_jauge?'<span style="color:var(--orange);font-size:.7rem">📊</span>':''}<button onclick="openOptionModal('${formuleId}',${JSON.stringify(o).replace(/"/g,'&quot;')})" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:.75rem">✏️</button><button onclick="deleteOption('${o.id}','${formuleId}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:.85rem">×</button></span>`).join('')}<button class="btn btn-secondary btn-sm" onclick="openOptionModal('${formuleId}')">+ Option</button></div>`;
+  }catch(e){}
+}
+function openOptionModal(formuleId,opt=null){
+  document.getElementById('option-formule-id').value=formuleId;
+  document.getElementById('modal-option-title').textContent=opt?"Modifier l'option":'Nouvelle option';
+  document.getElementById('option-id').value=opt?.id||'';
+  document.getElementById('option-nom').value=opt?.nom||'';
+  document.getElementById('option-prix').value=opt?.prix!=null?opt.prix:0;
+  document.getElementById('option-type').value=opt?.type||'checkbox';
+  document.getElementById('option-duree').value=opt?.duree_ajoutee_min||0;
+  document.getElementById('option-description').value=opt?.description||'';
+  document.getElementById('option-ajoute-jauge').checked=opt?.ajoute_jauge||false;
+  if(document.getElementById('option-hiboutik'))document.getElementById('option-hiboutik').value=opt?.hiboutik_product_id||'';
+  document.getElementById('modal-option').style.display='flex';
+}
+async function saveOption(){
+  const id=document.getElementById('option-id').value;
+  const formuleId=document.getElementById('option-formule-id').value;
+  const data={formule_id:formuleId,nom:document.getElementById('option-nom').value.trim(),prix:parseFloat(document.getElementById('option-prix').value)||0,type:document.getElementById('option-type').value,duree_ajoutee_min:parseInt(document.getElementById('option-duree').value)||0,description:document.getElementById('option-description').value.trim(),ajoute_jauge:document.getElementById('option-ajoute-jauge').checked,hiboutik_product_id:parseInt(document.getElementById('option-hiboutik')?.value)||null};
+  if(!data.nom){showToast('Nom obligatoire','error');return;}
+  try{if(id)await sb('options','PATCH',data,'?id=eq.'+id);else await sb('options','POST',data);closeModalOption();showToast(id?'Modifiée':'Créée','success');loadOptions(formuleId);}catch(e){showToast('Erreur','error');}
+}
+async function deleteOption(id,formuleId){try{await sb('options','DELETE',null,'?id=eq.'+id);loadOptions(formuleId);}catch(e){}}
+function closeModalOption(){document.getElementById('modal-option').style.display='none';}
+
+// ── CRÉNEAUX ──
+let creneauxActiviteId=null,creneauxActivitesList=[];
+const JOURS_SHORT=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+async function loadCreneauxPage(){
+  creneauxActivitesList=await sb('activites','GET',null,'?actif=eq.true&order=ordre.asc');
+  const chips=document.getElementById('creneaux-activites-chips');
+  chips.innerHTML=creneauxActivitesList.map(a=>`<div class="chip ${creneauxActiviteId===a.id?'active':''}" onclick="selectCreneauxActivite('${a.id}',this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${a.couleur};margin-right:6px"></span>${a.nom}</div>`).join('');
+  if(!creneauxActiviteId&&creneauxActivitesList.length){creneauxActiviteId=creneauxActivitesList[0].id;chips.querySelector('.chip').classList.add('active');}
+  loadCreneaux(creneauxActiviteId);
+}
+async function selectCreneauxActivite(id,el){creneauxActiviteId=id;document.querySelectorAll('#creneaux-activites-chips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');loadCreneaux(id);}
+async function loadCreneaux(activiteId){
+  if(!activiteId)return;
+  const el=document.getElementById('creneaux-agenda');
+  el.innerHTML='<div class="loader"></div>';
+  const activite=creneauxActivitesList.find(a=>a.id===activiteId)||{};
+  const creneaux=await sb('creneaux_config','GET',null,'?activite_id=eq.'+activiteId+'&order=heure_debut.asc');
+  const couleur=activite.couleur||'#7c6bff';
+  const parJour={};for(let j=0;j<=6;j++)parJour[j]=[];
+  const tousJours=[];
+  creneaux.forEach(c=>{if(c.jour_semaine!==null)parJour[c.jour_semaine].push(c);else tousJours.push(c);});
+  el.innerHTML=`<div class="card"><div class="card-header"><div class="card-title">📅 Agenda hebdomadaire — ${activite.nom||''}</div><div style="display:flex;align-items:center;gap:8px"><span style="color:var(--text2);font-size:.82rem">Jauge :</span><input type="number" id="jauge-edit" value="${activite.jauge_max||50}" min="1" style="width:70px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:.9rem;text-align:center" onblur="saveJauge('${activiteId}',this.value)"><span style="color:var(--text2);font-size:.82rem">pers.</span></div></div>${tousJours.length>0?`<div style="background:rgba(124,107,255,.08);border:1px solid rgba(124,107,255,.2);border-radius:10px;padding:14px;margin-bottom:16px"><div style="color:var(--text2);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Tous les jours</div><div style="display:flex;flex-wrap:wrap;gap:8px">${tousJours.map(c=>creneauPill(c,activiteId,couleur)).join('')}</div></div>`:''}<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">${[0,1,2,3,4,5,6].map(j=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;min-height:110px"><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;color:var(--text3);margin-bottom:8px;text-align:center;text-transform:uppercase">${JOURS_SHORT[j]}</div><div style="display:flex;flex-direction:column;gap:5px">${parJour[j].map(c=>creneauPill(c,activiteId,couleur)).join('')}</div><button onclick="openCreneauModalJour('${activiteId}',${j})" style="width:100%;margin-top:6px;background:none;border:1px dashed var(--border);border-radius:6px;color:var(--text3);padding:4px;font-size:.72rem;cursor:pointer">+ ajouter</button></div>`).join('')}</div></div>`;
+}
+function creneauPill(c,activiteId,couleur){return `<div style="display:flex;align-items:center;justify-content:space-between;background:${couleur}18;border:1px solid ${couleur}40;border-radius:8px;padding:4px 8px"><span style="font-family:'Syne',sans-serif;font-weight:700;font-size:.88rem;color:${couleur}">${c.heure_debut.slice(0,5)}</span><div><button onclick="toggleCreneau('${c.id}','${activiteId}',${c.actif})" style="background:none;border:none;cursor:pointer;font-size:.7rem;color:${c.actif?'var(--orange)':'var(--green)'}">${c.actif?'⏸':'▶'}</button><button onclick="deleteCreneau('${c.id}','${activiteId}')" style="background:none;border:none;cursor:pointer;font-size:.7rem;color:var(--red)">×</button></div></div>`;}
+async function saveJauge(activiteId,v){const j=parseInt(v);if(!j)return;await sb('activites','PATCH',{jauge_max:j},'?id=eq.'+activiteId);const a=creneauxActivitesList.find(x=>x.id===activiteId);if(a)a.jauge_max=j;showToast('Jauge mise à jour','success');}
+function openCreneauModal(activiteId){if(!activiteId)return;document.getElementById('creneau-activite-id').value=activiteId;document.getElementById('creneau-heure').value='';document.getElementById('creneau-jour').value='';document.getElementById('modal-creneau').style.display='flex';}
+function openCreneauModalJour(activiteId,jour){document.getElementById('creneau-activite-id').value=activiteId;document.getElementById('creneau-heure').value='';document.getElementById('creneau-jour').value=jour;document.getElementById('modal-creneau').style.display='flex';}
+async function saveCreneau(){const activiteId=document.getElementById('creneau-activite-id').value;const heure=document.getElementById('creneau-heure').value;const jour=document.getElementById('creneau-jour').value;if(!heure){showToast('Heure obligatoire','error');return;}try{await sb('creneaux_config','POST',{activite_id:activiteId,heure_debut:heure,jour_semaine:jour!==''?parseInt(jour):null});closeModalCreneau();showToast('Créneau ajouté','success');loadCreneaux(activiteId);}catch(e){showToast('Erreur','error');}}
+async function toggleCreneau(id,activiteId,current){await sb('creneaux_config','PATCH',{actif:!current},'?id=eq.'+id);loadCreneaux(activiteId);}
+async function deleteCreneau(id,activiteId){await sb('creneaux_config','DELETE',null,'?id=eq.'+id);loadCreneaux(activiteId);}
+function closeModalCreneau(){document.getElementById('modal-creneau').style.display='none';}
+
+// ── PRODUITS ──
+let produitsAllList=[];
+async function loadProduits(){
+  produitsAllList=await sb('produits_caisse','GET',null,'?order=ordre.asc');
+  const cats={snack:[],jeton:[],autre:[]};
+  produitsAllList.forEach(p=>{(cats[p.categorie]||cats.autre).push(p);});
+  ['snack','jetons','autres'].forEach((cat,i)=>renderProduitsGroup('produits-'+cat,cats[['snack','jeton','autre'][i]]));
+}
+function renderProduitsGroup(elId,items){
+  const el=document.getElementById(elId);
+  if(!items.length){el.innerHTML='<div style="color:var(--text3);font-size:.85rem;padding:8px 0">Aucun produit</div>';return;}
+  el.innerHTML=items.map(p=>`<div class="item-card ${!p.actif?'inactive':''}"><div class="item-card-top"><div class="item-name">${p.nom}</div><span class="badge badge-purple">${p.prix}€</span></div><div class="item-meta">${p.hiboutik_product_id?'Hiboutik #'+p.hiboutik_product_id:'Sans lien Hiboutik'}</div><div class="item-actions"><button class="btn btn-secondary btn-sm" onclick="openProduitModal('${p.id}')">✏️</button><button class="btn ${p.actif?'btn-danger':'btn-success'} btn-sm" onclick="toggleProduit('${p.id}',${p.actif})">${p.actif?'⏸':'▶'}</button><button class="btn btn-danger btn-sm" onclick="deleteProduit('${p.id}')">🗑</button></div></div>`).join('');
+}
+function openProduitModal(id=null){
+  const p=id?produitsAllList.find(x=>x.id===id):null;
+  document.getElementById('modal-produit-title').textContent=id?'Modifier':'Nouveau produit';
+  document.getElementById('produit-id').value=p?.id||'';
+  document.getElementById('produit-nom').value=p?.nom||'';
+  document.getElementById('produit-prix').value=p?.prix||'';
+  document.getElementById('produit-categorie').value=p?.categorie||'snack';
+  document.getElementById('produit-hiboutik').value=p?.hiboutik_product_id||'';
+  document.getElementById('modal-produit').style.display='flex';
+}
+async function saveProduit(){
+  const id=document.getElementById('produit-id').value;
+  const data={nom:document.getElementById('produit-nom').value.trim(),prix:parseFloat(document.getElementById('produit-prix').value),categorie:document.getElementById('produit-categorie').value,hiboutik_product_id:parseInt(document.getElementById('produit-hiboutik').value)||null};
+  if(!data.nom||!data.prix){showToast('Nom et prix obligatoires','error');return;}
+  try{if(id)await sb('produits_caisse','PATCH',data,'?id=eq.'+id);else await sb('produits_caisse','POST',data);closeModalProduit();showToast(id?'Modifié':'Créé','success');loadProduits();}catch(e){showToast('Erreur','error');}
+}
+async function toggleProduit(id,current){await sb('produits_caisse','PATCH',{actif:!current},'?id=eq.'+id);loadProduits();}
+async function deleteProduit(id){if(!confirm('Supprimer ?'))return;await sb('produits_caisse','DELETE',null,'?id=eq.'+id);showToast('Supprimé','success');loadProduits();}
+function closeModalProduit(){document.getElementById('modal-produit').style.display='none';}
+
+// ── EMPLOYÉS ──
+let employesList=[];
+async function loadEmployes(){
+  employesList=await sb('employes','GET',null,'?order=nom.asc');
+  document.getElementById('employes-tbody').innerHTML=employesList.map(e=>`<tr><td><b>${e.nom}</b> <span style="color:var(--text3);font-size:.8rem">(${e.id})</span></td><td>${e.role||'—'}</td><td>${e.is_manager?'<span class="badge badge-purple">Manager</span>':'—'}</td><td><span class="badge ${e.actif?'badge-green':'badge-red'}">${e.actif?'Actif':'Inactif'}</span></td><td><div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" onclick="openEmployeModal('${e.id}')">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteEmploye('${e.id}')">🗑</button></div></td></tr>`).join('');
+}
+function openEmployeModal(id=null){
+  const e=id?employesList.find(x=>x.id===id):null;
+  document.getElementById('modal-employe-title').textContent=id?'Modifier':'Nouvel employé';
+  document.getElementById('employe-id-original').value=e?.id||'';
+  document.getElementById('employe-id').value=e?.id||'';
+  document.getElementById('employe-nom').value=e?.nom||'';
+  document.getElementById('employe-pin').value=e?.pin||'';
+  document.getElementById('employe-role').value=e?.role||'';
+  document.getElementById('employe-manager').checked=e?.is_manager||false;
+  document.getElementById('modal-employe').style.display='flex';
+}
+async function saveEmploye(){
+  const originalId=document.getElementById('employe-id-original').value;
+  const data={id:document.getElementById('employe-id').value.trim().toLowerCase(),nom:document.getElementById('employe-nom').value.trim(),pin:document.getElementById('employe-pin').value.trim(),role:document.getElementById('employe-role').value.trim(),is_manager:document.getElementById('employe-manager').checked};
+  if(!data.id||!data.nom||!data.pin){showToast('ID, nom et PIN obligatoires','error');return;}
+  if(data.pin.length!==4){showToast('PIN = 4 chiffres','error');return;}
+  try{if(originalId)await sb('employes','PATCH',{nom:data.nom,pin:data.pin,role:data.role,is_manager:data.is_manager},'?id=eq.'+originalId);else await sb('employes','POST',data);closeModalEmploye();showToast(originalId?'Modifié':'Ajouté','success');loadEmployes();}catch(e){showToast('Erreur : '+e.message,'error');}
+}
+async function deleteEmploye(id){if(id==='herve'){showToast('Impossible de supprimer le compte principal','error');return;}if(!confirm('Supprimer ?'))return;await sb('employes','DELETE',null,'?id=eq.'+id);showToast('Supprimé','success');loadEmployes();}
+function closeModalEmploye(){document.getElementById('modal-employe').style.display='none';}
+
+// ── PARAMÈTRES ──
+async function loadParametres(){
+  const params=await sb('parametres','GET',null,'?order=id.asc');
+  document.getElementById('parametres-list').innerHTML=params.map(p=>`<div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-weight:500;margin-bottom:3px">${p.id}</div><div style="color:var(--text3);font-size:.8rem">${p.description||''}</div></div><input type="${p.id.includes('token')||p.id.includes('key')?'password':'text'}" class="form-control" style="width:280px" value="${p.valeur||''}" onblur="saveParametre('${p.id}',this.value)" placeholder="Non configuré"></div>`).join('');
+}
+async function saveParametre(id,valeur){try{await sb('parametres','PATCH',{valeur},'?id=eq.'+id);showToast('Sauvegardé','success');}catch(e){showToast('Erreur','error');}}
+
+// ── RÉSERVATIONS ──
+let vueMode='jour',currentDate=new Date(),resaActivites=[],resaFormules=[],resaOptions=[],selectedOptions=[];
+const STATUT_COLORS={confirmee:'#2ecc71',attente:'#f39c12',soldee:'#7c6bff',annulee:'#e74c3c',no_show:'#888'};
+const STATUT_LABELS={confirmee:'Confirmée',attente:'En attente',soldee:'Soldée',annulee:'Annulée',no_show:'No-show'};
+
+function setVue(mode){vueMode=mode;document.querySelectorAll('.vue-btn').forEach(b=>b.classList.remove('active'));document.getElementById('vue-'+mode).classList.add('active');renderResa();}
+function navDate(dir){if(vueMode==='jour')currentDate.setDate(currentDate.getDate()+dir);else if(vueMode==='semaine')currentDate.setDate(currentDate.getDate()+dir*7);else currentDate.setMonth(currentDate.getMonth()+dir);renderResa();}
+function goToday(){currentDate=new Date();renderResa();}
+function dateStr(d){return d.toISOString().split('T')[0];}
+function formatDate(d){return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+function timeToMin(t){const[h,m]=t.split(':').map(Number);return h*60+(m||0);}
+
+async function loadReservations(){
+  resaActivites=await sb('activites','GET',null,'?actif=eq.true&order=ordre.asc');
+  renderResa();
+}
+
+async function renderResa(){
+  const el=document.getElementById('resa-content');
+  el.innerHTML='<div style="padding:40px;text-align:center"><div class="loader"></div></div>';
+  if(vueMode==='jour')await renderJour(el);
+  else if(vueMode==='semaine')await renderSemaine(el);
+  else await renderMois(el);
+}
+
+async function renderJour(el){
+  const d=currentDate;
+  document.getElementById('resa-sub').textContent=formatDate(d);
+  const reservations=await sb('reservations','GET',null,'?date=eq.'+dateStr(d)+'&order=heure_arrivee.asc');
+  const tranches=[];
+  for(let h=9;h<=20;h++){tranches.push({h,m:0,label:String(h).padStart(2,'0')+'h',min:h*60});tranches.push({h,m:30,label:'·',min:h*60+30});}
+  tranches.push({h:21,m:0,label:'21h',min:21*60});
+
+  function getNb(activiteId,min){return reservations.filter(r=>r.activite_id===activiteId&&!['annulee','no_show'].includes(r.statut)&&timeToMin(r.heure_arrivee)<=min&&timeToMin(r.heure_arrivee)+(r.duree_min||120)>min).reduce((s,r)=>s+(r.nb_personnes||0),0);}
+  function cellCol(nb,jauge){if(nb===0)return{bg:'var(--surface2)',txt:'var(--text3)',bd:'var(--border)'};const p=nb/jauge;if(p>=.9)return{bg:'#e74c3c22',txt:'#e74c3c',bd:'#e74c3c44'};if(p>=.6)return{bg:'#f39c1222',txt:'#f39c12',bd:'#f39c1244'};return{bg:'#2ecc7122',txt:'#2ecc71',bd:'#2ecc7144'};}
+  function getResas(activiteId,min){return reservations.filter(r=>r.activite_id===activiteId&&!['annulee','no_show'].includes(r.statut)&&timeToMin(r.heure_arrivee)===min);}
+
+  el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%"><thead><tr><th style="position:sticky;left:0;z-index:2;background:var(--surface);width:160px;min-width:160px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:10px 14px;font-size:.75rem;color:var(--text3);text-transform:uppercase">Activité</th>${tranches.map(t=>`<th style="background:var(--surface);border-bottom:1px solid var(--border);border-right:1px solid ${t.m===0?'var(--border)':'rgba(46,46,58,.3)'};padding:8px 2px;text-align:center;font-size:${t.m===0?'.78':'.7'}rem;color:${t.m===0?'var(--text2)':'var(--text3)'};font-weight:${t.m===0?'600':'400'};min-width:52px">${t.label}</th>`).join('')}</tr></thead><tbody>${resaActivites.map((a,ai)=>`<tr style="${ai%2===0?'':'background:rgba(255,255,255,.01)'}"><td style="position:sticky;left:0;z-index:1;background:${ai%2===0?'var(--surface)':'var(--surface2)'};border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:10px 14px"><div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:${a.couleur};flex-shrink:0"></div><div><div style="font-size:.85rem;font-weight:600;white-space:nowrap">${a.nom}</div><div style="font-size:.72rem;color:var(--text3)">max ${a.jauge_max}</div></div></div></td>${tranches.map(t=>{const nb=getNb(a.id,t.min);const resas=getResas(a.id,t.min);const c=cellCol(nb,a.jauge_max);return`<td style="border-right:1px solid ${t.m===0?'var(--border)':'rgba(46,46,58,.2)'};border-bottom:1px solid var(--border);padding:4px 2px;text-align:center;cursor:${resas.length>0?'pointer':'default'};position:relative" ${resas.length>0?`onclick="openResaDetail('${resas[0].id}')" title="${resas.map(r=>r.nom_client||'?').join(', ')}"`:''}><div style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:34px;border-radius:6px;background:${c.bg};border:1px solid ${c.bd};font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;color:${c.txt}${resas.length>0?';box-shadow:0 0 0 1px '+a.couleur+'44':''}">${nb>0?nb:'<span style="font-size:.65rem;opacity:.3">0</span>'}</div>${resas.length>0?`<div style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:${a.couleur}"></div>`:''}</td>`}).join('')}</tr>`).join('')}</tbody></table></div><div style="padding:16px 20px;border-top:1px solid var(--border)"><div style="font-size:.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Réservations du jour (${reservations.filter(r=>!['annulee','no_show'].includes(r.statut)).length})</div>${reservations.length===0?'<div style="color:var(--text3);font-size:.85rem">Aucune réservation</div>':reservations.map(r=>{const a=resaActivites.find(x=>x.id===r.activite_id)||{};const col=STATUT_COLORS[r.statut]||'#888';const bg=a.couleur||'#7c6bff';return`<div style="display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${bg};border-radius:8px;padding:10px 14px;margin-bottom:8px;cursor:pointer" onclick="openResaDetail('${r.id}')"><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;color:${bg};min-width:45px">${r.heure_arrivee.slice(0,5)}</div><div style="flex:1"><div style="font-weight:600;font-size:.88rem">${r.nom_client||'Sans nom'} — ${r.nb_personnes} pers.${r.nb_adultes>0?' + '+r.nb_adultes+' adulte(s)':''}</div><div style="font-size:.78rem;color:var(--text2)">${a.nom||''}${r.prenom_enfant?' · 🎂 '+r.prenom_enfant+' '+r.age_enfant+' ans':''} · ${r.duree_min}min</div></div>${r.telephone_client?`<a href="tel:${r.telephone_client}" onclick="event.stopPropagation()" style="color:var(--accent);font-size:.82rem;text-decoration:none">📞 ${r.telephone_client}</a>`:''}<span style="font-size:.75rem;font-weight:600;color:${col};background:${col}18;border-radius:100px;padding:3px 10px">${STATUT_LABELS[r.statut]||r.statut}</span></div>`}).join('')}</div></div>`;
+}
+
+async function renderSemaine(el){
+  const lundi=new Date(currentDate);lundi.setDate(lundi.getDate()-((lundi.getDay()+6)%7));
+  const jours=Array.from({length:7},(_,i)=>{const d=new Date(lundi);d.setDate(d.getDate()+i);return d;});
+  document.getElementById('resa-sub').textContent='Semaine du '+jours[0].toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+' au '+jours[6].toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  const reservations=await sb('reservations','GET',null,'?date=gte.'+dateStr(jours[0])+'&date=lte.'+dateStr(jours[6])+'&order=heure_arrivee.asc');
+  el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">${jours.map((d,i)=>{const isToday=dateStr(d)===dateStr(new Date());const nb=reservations.filter(r=>r.date===dateStr(d)&&!['annulee','no_show'].includes(r.statut)).length;return`<div style="padding:14px 10px;text-align:center;border-right:${i<6?'1px solid var(--border)':'none'};cursor:pointer;${isToday?'background:rgba(124,107,255,.1)':''}" onclick="currentDate=new Date('${dateStr(d)}');setVue('jour')"><div style="font-size:.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'][i]}</div><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;margin:4px 0;color:${isToday?'var(--accent)':'var(--text)'}">${d.getDate()}</div>${nb>0?`<div style="background:var(--accent);color:white;border-radius:100px;font-size:.72rem;padding:2px 8px;display:inline-block">${nb} resa</div>`:'<div style="color:var(--text3);font-size:.75rem">—</div>'}</div>`}).join('')}</div><div style="display:grid;grid-template-columns:repeat(7,1fr)">${jours.map((d,i)=>{const dayResas=reservations.filter(r=>r.date===dateStr(d)).sort((a,b)=>a.heure_arrivee.localeCompare(b.heure_arrivee));return`<div style="padding:10px;border-right:${i<6?'1px solid var(--border)':'none'};min-height:180px">${dayResas.map(r=>{const a=resaActivites.find(x=>x.id===r.activite_id)||{};return`<div style="background:${a.couleur||'#7c6bff'}20;border-left:3px solid ${a.couleur||'#7c6bff'};border-radius:6px;padding:5px 8px;margin-bottom:5px;cursor:pointer;font-size:.78rem" onclick="openResaDetail('${r.id}')"><div style="font-weight:600">${r.heure_arrivee.slice(0,5)} — ${r.nom_client||'?'}</div><div style="color:var(--text2)">${r.nb_personnes} pers.</div></div>`}).join('')}</div>`}).join('')}</div></div>`;
+}
+
+async function renderMois(el){
+  const year=currentDate.getFullYear(),month=currentDate.getMonth();
+  document.getElementById('resa-sub').textContent=new Date(year,month,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const dMin=year+'-'+String(month+1).padStart(2,'0')+'-01';
+  const dMax=year+'-'+String(month+1).padStart(2,'0')+'-31';
+  const reservations=await sb('reservations','GET',null,'?date=gte.'+dMin+'&date=lte.'+dMax+'&order=date.asc');
+  const premier=new Date(year,month,1),dernierJour=new Date(year,month+1,0).getDate(),debut=(premier.getDay()+6)%7;
+  const jours=[];for(let i=0;i<debut;i++)jours.push(null);for(let i=1;i<=dernierJour;i++)jours.push(i);while(jours.length%7!==0)jours.push(null);
+  el.innerHTML=`<div class="card" style="padding:0;overflow:hidden"><div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">${['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(j=>`<div style="padding:10px;text-align:center;color:var(--text3);font-size:.75rem;text-transform:uppercase;letter-spacing:.06em">${j}</div>`).join('')}</div><div style="display:grid;grid-template-columns:repeat(7,1fr)">${jours.map((jour,i)=>{if(!jour)return`<div style="border-right:${i%7<6?'1px solid var(--border)':'none'};border-bottom:1px solid var(--border);min-height:80px;background:rgba(0,0,0,.1)"></div>`;const ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(jour).padStart(2,'0');const dayResas=reservations.filter(r=>r.date===ds&&!['annulee','no_show'].includes(r.statut));const isToday=ds===dateStr(new Date());const total=dayResas.reduce((s,r)=>s+(r.nb_personnes||0),0);const pct=total>0?Math.min(100,Math.round(total/185*100)):0;const col=pct>=80?'#e74c3c':pct>=50?'#f39c12':'#2ecc71';return`<div style="border-right:${i%7<6?'1px solid var(--border)':'none'};border-bottom:1px solid var(--border);min-height:80px;padding:8px;cursor:pointer;${isToday?'background:rgba(124,107,255,.08)':''}" onclick="currentDate=new Date('${ds}');setVue('jour')"><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;margin-bottom:4px;color:${isToday?'var(--accent)':'var(--text)'}">${jour}</div>${dayResas.length>0?`<div style="font-size:.7rem;color:var(--text2);margin-bottom:3px">${dayResas.length} resa · ${total} pers.</div><div style="background:var(--border);border-radius:100px;height:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};border-radius:100px"></div></div>`:''}</div>`}).join('')}</div></div>`;
+}
+
+// ── MODAL RÉSERVATION ──
+async function openResaModal(resaId=null){
+  resaActivites=await sb('activites','GET',null,'?actif=eq.true&order=ordre.asc');
+  selectedOptions=[];
+  document.getElementById('resa-activite').innerHTML=resaActivites.map(a=>`<option value="${a.id}">${a.nom}</option>`).join('');
+  document.getElementById('resa-id').value='';
+  document.getElementById('resa-date').value=dateStr(new Date());
+  document.getElementById('resa-heure').value='';
+  document.getElementById('resa-duree').value='';
+  document.getElementById('resa-nb').value='1';
+  document.getElementById('resa-adultes').value='0';
+  document.getElementById('resa-nom').value='';
+  document.getElementById('resa-tel').value='';
+  document.getElementById('resa-email').value='';
+  document.getElementById('resa-prenom-enfant').value='';
+  document.getElementById('resa-age-enfant').value='';
+  document.getElementById('resa-montant').value='';
+  document.getElementById('resa-acompte').value='0';
+  document.getElementById('resa-notes').value='';
+  document.getElementById('resa-statut').value='confirmee';
+  document.getElementById('prix-detail').textContent='';
+
+  if(resaId){
+    document.getElementById('modal-resa-title').textContent='Modifier';
+    document.getElementById('resa-id').value=resaId;
+    const r=(await sb('reservations','GET',null,'?id=eq.'+resaId))[0];
+    if(r){
+      document.getElementById('resa-activite').value=r.activite_id||'';
+      document.getElementById('resa-date').value=r.date||dateStr(new Date());
+      document.getElementById('resa-heure').value=r.heure_arrivee?r.heure_arrivee.slice(0,5):'';
+      document.getElementById('resa-duree').value=r.duree_min||'';
+      document.getElementById('resa-nb').value=r.nb_personnes||1;
+      document.getElementById('resa-adultes').value=r.nb_adultes||0;
+      document.getElementById('resa-nom').value=r.nom_client||'';
+      document.getElementById('resa-tel').value=r.telephone_client||'';
+      document.getElementById('resa-email').value=r.email_client||'';
+      document.getElementById('resa-prenom-enfant').value=r.prenom_enfant||'';
+      document.getElementById('resa-age-enfant').value=r.age_enfant||'';
+      document.getElementById('resa-montant').value=r.montant_total||'';
+      document.getElementById('resa-acompte').value=r.montant_acompte||0;
+      document.getElementById('resa-notes').value=r.notes||'';
+      document.getElementById('resa-statut').value=r.statut||'confirmee';
+      const opts=await sb('reservation_options','GET',null,'?reservation_id=eq.'+resaId);
+      selectedOptions=opts.map(o=>o.option_id);
+    }
+  } else {
+    document.getElementById('modal-resa-title').textContent='Nouvelle réservation';
+  }
+  await onResaActiviteChange();
+  document.getElementById('modal-resa').style.display='flex';
+}
+
+async function onResaActiviteChange(){
+  const activiteId=document.getElementById('resa-activite').value;
+  const activite=resaActivites.find(a=>a.id===activiteId)||{};
+  document.getElementById('resa-anniv-section').style.display=activite.slug==='anniversaire'?'block':'none';
+  document.getElementById('resa-duree').value=activite.duree_defaut_min||120;
+  resaFormules=await sb('formules','GET',null,'?activite_id=eq.'+activiteId+'&actif=eq.true&order=ordre.asc');
+  document.getElementById('resa-formule').innerHTML='<option value="">— Sans formule —</option>'+resaFormules.map(f=>`<option value="${f.id}">${f.nom} — ${f.prix}€${f.prix_par_personne?' /pers.':''} (${f.duree_min}min)</option>`).join('');
+  await onResaFormuleChange();
+}
+
+async function onResaFormuleChange(){
+  const formuleId=document.getElementById('resa-formule').value;
+  if(!formuleId){document.getElementById('resa-options-section').style.display='none';calcPrixTotal();return;}
+  const formule=resaFormules.find(f=>f.id===formuleId);
+  if(formule)document.getElementById('resa-duree').value=formule.duree_min;
+  resaOptions=await sb('options','GET',null,'?formule_id=eq.'+formuleId+'&actif=eq.true');
+  const optEl=document.getElementById('resa-options-section');
+  const optList=document.getElementById('resa-options-list');
+  if(resaOptions.length>0){
+    optEl.style.display='block';
+    optList.innerHTML=resaOptions.map(o=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" value="${o.id}" ${selectedOptions.includes(o.id)?'checked':''} onchange="toggleOptionSel('${o.id}')"><span style="font-size:.88rem;flex:1">${o.nom}</span>${o.prix>0?`<span style="color:var(--accent);font-size:.8rem">+${o.prix}€/u</span>`:''}${o.duree_ajoutee_min>0?`<span style="color:var(--accent3);font-size:.8rem">+${o.duree_ajoutee_min}min</span>`:''}${o.ajoute_jauge?`<span style="color:var(--orange);font-size:.75rem">📊</span>`:''}</label>${o.type==='quantity'?`<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span style="font-size:.78rem;color:var(--text3)">Quantité :</span><input type="number" id="opt-qte-${o.id}" value="1" min="1" max="50" style="width:70px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:.88rem;text-align:center" onchange="calcPrixTotal()"></div>`:o.type==='per_person'?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:.75rem;color:var(--text3)">Calculé automatiquement × nb personnes</div>`:''}</div>`).join('');
+  } else {
+    optEl.style.display='none';
+  }
+  calcPrixTotal();
+}
+
+function toggleOptionSel(optId){
+  if(selectedOptions.includes(optId))selectedOptions=selectedOptions.filter(x=>x!==optId);
+  else selectedOptions.push(optId);
+  calcPrixTotal();
+}
+
+function calcPrixTotal(){
+  const formuleId=document.getElementById('resa-formule').value;
+  const formule=resaFormules.find(f=>f.id===formuleId);
+  const nbPersonnes=parseInt(document.getElementById('resa-nb').value)||1;
+  let total=0,dureeTotal=0,detail=[],extraJauge=0;
+
+  if(formule){
+    const prixBase=formule.prix_par_personne?formule.prix*nbPersonnes:formule.prix;
+    total+=prixBase;
+    dureeTotal=formule.duree_min;
+    detail.push(formule.prix_par_personne?`${formule.nom} : ${formule.prix}€ × ${nbPersonnes} = ${prixBase}€`:`${formule.nom} : ${prixBase}€`);
+  }
+
+  selectedOptions.forEach(optId=>{
+    const opt=resaOptions.find(o=>o.id===optId);
+    if(!opt)return;
+    let qte=1;
+    if(opt.type==='quantity') qte=parseInt(document.getElementById('opt-qte-'+optId)?.value)||1;
+    else if(opt.type==='per_person') qte=nbPersonnes;
+    const prixOpt=opt.prix*qte;
+    total+=prixOpt;
+    if(opt.duree_ajoutee_min>0)dureeTotal+=opt.duree_ajoutee_min;
+    if(opt.ajoute_jauge)extraJauge+=qte;
+    if(opt.prix>0)detail.push(opt.type==='per_person'?`${opt.nom} ×${qte} pers. : +${prixOpt}€`:opt.type==='quantity'?`${opt.nom} ×${qte} : +${prixOpt}€`:`${opt.nom} : +${prixOpt}€`);
+  });
+
+  if(total>0)document.getElementById('resa-montant').value=total;
+  if(dureeTotal>0)document.getElementById('resa-duree').value=dureeTotal;
+  document.getElementById('prix-detail').innerHTML=detail.length>0?detail.join('<br>')+'<br><b>Total : '+total+'€</b>':'';
+
+  if(extraJauge>0){
+    const base=parseInt(document.getElementById('resa-nb').value)||1;
+    // Note: extraJauge est un indicateur pour saveResa, pas modifier nb ici
+    document.getElementById('prix-detail').innerHTML+='<br><span style="color:var(--orange)">📊 Jauge totale : '+(base+extraJauge)+' pers.</span>';
+  }
+}
+
+async function saveResa(){
+  const id=document.getElementById('resa-id').value;
+  const activiteId=document.getElementById('resa-activite').value;
+  const formuleId=document.getElementById('resa-formule').value;
+
+  // Calculer nb_personnes réel avec options jauge
+  let nbBase=parseInt(document.getElementById('resa-nb').value)||1;
+  let extraJauge=0;
+  selectedOptions.forEach(optId=>{
+    const opt=resaOptions.find(o=>o.id===optId);
+    if(!opt||!opt.ajoute_jauge)return;
+    let qte=1;
+    if(opt.type==='quantity') qte=parseInt(document.getElementById('opt-qte-'+optId)?.value)||1;
+    else if(opt.type==='per_person') qte=nbBase;
+    extraJauge+=qte;
+  });
+  const nbTotal=nbBase+extraJauge;
+
+  const data={activite_id:activiteId,formule_id:formuleId||null,date:document.getElementById('resa-date').value,heure_arrivee:document.getElementById('resa-heure').value,duree_min:parseInt(document.getElementById('resa-duree').value)||120,nb_personnes:nbTotal,nb_adultes:parseInt(document.getElementById('resa-adultes').value)||0,nom_client:document.getElementById('resa-nom').value.trim(),telephone_client:document.getElementById('resa-tel').value.trim(),email_client:document.getElementById('resa-email').value.trim(),prenom_enfant:document.getElementById('resa-prenom-enfant').value.trim()||null,age_enfant:parseInt(document.getElementById('resa-age-enfant').value)||null,montant_total:parseFloat(document.getElementById('resa-montant').value)||null,montant_acompte:parseFloat(document.getElementById('resa-acompte').value)||0,notes:document.getElementById('resa-notes').value.trim(),statut:document.getElementById('resa-statut').value,origine:'caisse'};
+  if(!data.nom_client||!data.date||!data.heure_arrivee){showToast('Nom, date et heure obligatoires','error');return;}
+  try{
+    let resaId=id;
+    if(id)await sb('reservations','PATCH',data,'?id=eq.'+id);
+    else{const res=await sb('reservations','POST',data);resaId=Array.isArray(res)?res[0].id:res.id;}
+    if(resaId){
+      await sb('reservation_options','DELETE',null,'?reservation_id=eq.'+resaId);
+      for(const optId of selectedOptions){const opt=resaOptions.find(o=>o.id===optId);const qte=opt?.type==='quantity'?(parseInt(document.getElementById('opt-qte-'+optId)?.value)||1):1;const qteOpt=opt.type==='quantity'?(parseInt(document.getElementById('opt-qte-'+optId)?.value)||1):opt.type==='per_person'?nbBase:1;if(opt)await sb('reservation_options','POST',{reservation_id:resaId,option_id:optId,prix_unitaire:opt.prix,quantite:qteOpt});}
+    }
+    closeModalResa();showToast(id?'Modifiée':'Créée','success');renderResa();
+  }catch(e){showToast('Erreur : '+e.message,'error');}
+}
+
+// ── DÉTAIL RÉSERVATION ──
+async function openResaDetail(resaId){
+  const resas=await sb('reservations','GET',null,'?id=eq.'+resaId);
+  if(!resas||!resas[0])return;
+  const r=resas[0];
+  const activite=resaActivites.find(a=>a.id===r.activite_id)||{};
+  const opts=await sb('reservation_options','GET',null,'?reservation_id=eq.'+resaId);
+  const col=STATUT_COLORS[r.statut]||'#888';
+  const bg=activite.couleur||'#7c6bff';
+  const solde=(r.montant_total||0)-(r.montant_acompte||0);
+  document.getElementById('detail-title').innerHTML=`<span style="color:${bg}">${activite.nom||''}</span> — ${r.nom_client||'Sans nom'}`;
+  document.getElementById('detail-content').innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px"><span class="badge" style="background:${col}20;color:${col}">${STATUT_LABELS[r.statut]||r.statut}</span><span style="color:var(--text2);font-size:.85rem">📅 ${r.date} à ${r.heure_arrivee.slice(0,5)} · ${r.duree_min}min</span></div><div class="resa-detail-grid"><div><div class="section-title" style="margin-top:0">Client</div><div style="font-size:.9rem;line-height:1.8"><div>👤 <b>${r.nom_client||'—'}</b></div>${r.telephone_client?`<div>📞 <a href="tel:${r.telephone_client}" style="color:var(--accent)">${r.telephone_client}</a></div>`:''}${r.email_client?`<div>✉️ <a href="mailto:${r.email_client}" style="color:var(--accent)">${r.email_client}</a></div>`:''}</div></div><div><div class="section-title" style="margin-top:0">Participants</div><div style="font-size:.9rem;line-height:1.8"><div>👶 <b>${r.nb_personnes}</b> pers.</div><div>👨 <b>${r.nb_adultes||0}</b> adulte(s)</div>${r.prenom_enfant?`<div>🎂 ${r.prenom_enfant}, <b>${r.age_enfant} ans</b></div>`:''}</div></div></div>${r.notes?`<div class="section-title">Notes</div><div style="background:var(--surface2);border-radius:8px;padding:12px;font-size:.88rem;color:var(--text2);margin-bottom:16px">${r.notes}</div>`:''}<div class="section-title">Paiement</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px"><div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem">${r.montant_total||'—'}€</div><div style="color:var(--text3);font-size:.75rem">Total</div></div><div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;color:var(--green)">${r.montant_acompte||0}€</div><div style="color:var(--text3);font-size:.75rem">Acompte</div></div><div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center"><div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;color:${solde>0?'var(--orange)':'var(--green)'}">${solde}€</div><div style="color:var(--text3);font-size:.75rem">Solde restant</div></div></div>`;
+  document.getElementById('detail-footer').innerHTML=`<button class="btn btn-secondary" onclick="closeModalResaDetail()">Fermer</button>${r.telephone_client?`<a href="tel:${r.telephone_client}" class="btn btn-success">📞 Appeler</a>`:''}${r.email_client?`<a href="mailto:${r.email_client}" class="btn btn-secondary">✉️ Email</a>`:''}<button class="btn btn-secondary" onclick="changeStatut('${r.id}','soldee')">✅ Solder</button><button class="btn btn-danger" onclick="changeStatut('${r.id}','annulee')">❌ Annuler</button><button class="btn btn-primary" onclick="closeModalResaDetail();openResaModal('${r.id}')">✏️ Modifier</button>`;
+  document.getElementById('modal-resa-detail').style.display='flex';
+}
+async function changeStatut(id,statut){try{await sb('reservations','PATCH',{statut},'?id=eq.'+id);showToast('Statut mis à jour','success');closeModalResaDetail();renderResa();}catch(e){showToast('Erreur','error');}}
+function closeModalResa(){document.getElementById('modal-resa').style.display='none';}
+function closeModalResaDetail(){document.getElementById('modal-resa-detail').style.display='none';}
+
+
+// ── CAISSE ──
+let HIB={url:'',account:'',token:''};
+async function hiboutik(ep,m='GET',b=null){
+  if(!HIB.token||!HIB.account){console.warn('Hiboutik non configuré');return null;}
+  try{
+    const proxyUrl='https://kqasgptqvwpykjqqqnlg.supabase.co/functions/v1/hiboutik-proxy';
+    const r=await fetch(proxyUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxYXNncHRxdndweWtqcXFxbmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MDk0MTMsImV4cCI6MjA5MzI4NTQxM30.OYkx112Rvkgdr3H45mKjotsNXOuQGpHGCN0aCF9o0YM','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxYXNncHRxdndweWtqcXFxbmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MDk0MTMsImV4cCI6MjA5MzI4NTQxM30.OYkx112Rvkgdr3H45mKjotsNXOuQGpHGCN0aCF9o0YM'},
+      body:JSON.stringify({endpoint:ep,method:m||'GET',body:b,account:HIB.account,token:HIB.token})
+    });
+    const x=await r.text();return x?JSON.parse(x):null;
+  }catch(e){console.warn('Hiboutik proxy err:',e.message);return null;}
+}
+
+let cActs=[],cForms={},cOpts={},cProds=[];
+let panier=[],cClient=null;
+let cActId=null,cFormId=null,cNbPers=1,cSelOpts={};
+function fmtC(n){return Number(n||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';}
+
+async function initCaisse(){
+  // Charger params Hiboutik
+  try{const p=await sb('parametres','GET',null,'');p.forEach(x=>{if(x.id==='hiboutik_url')HIB.url=x.valeur||'';if(x.id==='hiboutik_account')HIB.account=x.valeur||'';if(x.id==='hiboutik_token')HIB.token=x.valeur||'';});}catch(e){}
+  if(cActs.length>0){rafraichirJauges();return;}
+  await loadCaisseData();
+  rafraichirJauges();
+  setInterval(rafraichirJauges,30000);
+}
+
+async function loadCaisseData(){
+  try{
+    cActs=await sb('activites','GET',null,'?actif=eq.true&order=ordre.asc');
+    cProds=await sb('produits_caisse','GET',null,'?actif=eq.true&order=ordre.asc');
+    for(const a of cActs){
+      const fs=await sb('formules','GET',null,'?activite_id=eq.'+a.id+'&actif=eq.true&order=ordre.asc');
+      cForms[a.id]=fs;
+      for(const f of fs){const os=await sb('options','GET',null,'?formule_id=eq.'+f.id+'&actif=eq.true');cOpts[f.id]=os;}
+    }
+    const cats=[...cActs.map(a=>({id:'a_'+a.id,label:a.nom,col:a.couleur})),{id:'snack',label:'🍩 Snack',col:'#f39c12'},{id:'jeton',label:'🎮 Jetons',col:'#7c6bff'}];
+    document.getElementById('cat-bar').innerHTML=cats.map((c,i)=>`<button class="cat-btn ${i===0?'active':''}" onclick="selCatC('${c.id}',this)"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.col};flex-shrink:0"></span><span>${c.label}</span></button>`).join('');
+    selCatC('a_'+cActs[0]?.id,document.querySelector('.cat-btn'));
+  }catch(e){document.getElementById('caisse-grid').innerHTML='<div style="color:var(--red);padding:20px">Erreur chargement</div>';}
+}
+
+function selCatC(catId,el){
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const grid=document.getElementById('caisse-grid');
+  if(catId==='snack'||catId==='jeton'){
+    const items=cProds.filter(p=>p.categorie===catId);
+    grid.innerHTML=items.length===0?'<div style="color:var(--text3);padding:20px;font-size:.85rem">Aucun produit</div>':items.map(p=>`<div class="cprod" onclick="addSimpleC('${p.id}')"><div class="cprod-cat">${catId==='snack'?'Snack':'Jeton'}</div><div class="cprod-nom">${p.nom}</div><div class="cprod-prix">${fmtC(p.prix)}</div></div>`).join('');
+    return;
+  }
+  const aId=catId.replace('a_',''),act=cActs.find(a=>a.id===aId),fs=cForms[aId]||[];
+  grid.innerHTML=fs.length===0?'<div style="color:var(--text3);padding:20px;font-size:.85rem">Aucune formule configurée</div>':fs.map(f=>{const os=cOpts[f.id]||[];return`<div class="cprod ${os.length?'with-opts':''}" onclick="openOptsC('${aId}','${f.id}')"><div class="cprod-cat" style="color:${act?.couleur}">${act?.nom}</div><div class="cprod-nom">${f.nom}</div><div class="cprod-prix">${fmtC(f.prix)}${f.prix_par_personne?'<span style="font-size:.65rem;color:var(--text3)">/pers.</span>':''}</div>${f.duree_min?`<div style="font-size:.68rem;color:var(--text3);margin-top:3px">⏱ ${f.duree_min}min</div>`:''} ${os.length?`<div class="cprod-opts">+ ${os.length} option(s)</div>`:''}</div>`;}).join('');
+}
+
+async function rafraichirJauges(){
+  try{
+    const now=new Date(),today=now.toISOString().split('T')[0],hNow=now.getHours()*60+now.getMinutes();
+    const resas=await sb('reservations','GET',null,`?date=eq.${today}&statut=not.in.(annulee,no_show)`);
+    const acts=cActs.length?cActs:(await sb('activites','GET',null,'?actif=eq.true&order=ordre.asc'));
+    document.getElementById('caisse-jauges').innerHTML=acts.map(a=>{
+      const nb=resas.filter(r=>r.activite_id===a.id).filter(r=>{const arr=timeToMinC(r.heure_arrivee);return arr<=hNow&&arr+(r.duree_min||120)>hNow;}).reduce((s,r)=>s+(r.nb_personnes||0),0);
+      const pct=Math.min(100,Math.round(nb/a.jauge_max*100));
+      const col=pct>=90?'var(--red)':pct>=60?'var(--orange)':'var(--green)';
+      return`<div class="jp"><div class="jp-dot" style="background:${a.couleur}"></div><span class="jp-lbl">${a.nom.split(' ')[0]}</span><div class="jp-bar"><div class="jp-fill" style="width:${pct}%;background:${col}"></div></div><span class="jp-v" style="color:${col}">${nb}/${a.jauge_max}</span></div>`;
+    }).join('');
+  }catch(e){}
+}
+function timeToMinC(t){if(!t)return 0;const[h,m]=t.split(':').map(Number);return h*60+(m||0);}
+
+function openOptsC(aId,fId){
+  cActId=aId;cFormId=fId;cNbPers=1;cSelOpts={};
+  const f=cForms[aId]?.find(x=>x.id===fId),os=cOpts[fId]||[];
+  document.getElementById('mc-opts-title').textContent=f?.nom||'Options';
+  document.getElementById('mc-nb').textContent=1;
+  // Pré-remplir date et heure
+  const now=new Date();
+  document.getElementById('mc-date').value=now.toISOString().split('T')[0];
+  document.getElementById('mc-heure').value=now.toTimeString().slice(0,5);
+  // Nb personnes : libre par défaut, bloqué UNIQUEMENT si formule anniversaire avec max
+  const minusBtn=document.getElementById('mc-nb-minus');
+  const plusBtn=document.getElementById('mc-nb-plus');
+  const infoEl=document.getElementById('mc-nb-info');
+  const act=cActs.find(a=>a.id===aId);
+  const isAnniv=act?.slug==='anniversaire';
+  const hasMax=isAnniv&&f?.nb_personnes_max>0;
+  if(hasMax){
+    cNbPers=f.nb_personnes_max;
+    document.getElementById('mc-nb').textContent=cNbPers;
+    if(minusBtn)minusBtn.disabled=true;
+    if(plusBtn)plusBtn.disabled=true;
+    if(infoEl)infoEl.innerHTML=`<span style="color:var(--accent)">Formule inclut ${f.nb_personnes_max} enfants</span> — utilisez "Enfant supp." pour en ajouter`;
+  } else {
+    cNbPers=1;
+    document.getElementById('mc-nb').textContent=1;
+    if(minusBtn)minusBtn.disabled=false;
+    if(plusBtn)plusBtn.disabled=false;
+    if(infoEl)infoEl.textContent='';
+  }
+  document.getElementById('mc-opts-list').innerHTML=os.length===0
+    ?'<div style="color:var(--text2);font-size:.83rem;text-align:center;padding:8px">Aucune option disponible</div>'
+    :os.map(o=>`<div class="opt-item-c" id="oic-${o.id}" onclick="togOptC('${o.id}')"><div style="width:18px;height:18px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--bg)" id="chk-${o.id}"></div><div class="opt-info"><div class="opt-nom">${o.nom}</div><div class="opt-det">${o.duree_ajoutee_min>0?'+'+o.duree_ajoutee_min+'min ':''} ${o.type==='per_person'?'× nb personnes':o.type==='quantity'?'quantité libre':''} ${o.ajoute_jauge?'· 📊':''}</div></div><div class="opt-px">${o.prix>0?'+'+fmtC(o.prix):'Gratuit'}</div></div>${o.type==='quantity'?`<div id="qwc-${o.id}" style="display:none;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm)"><div style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--text2)">Quantité : <input type="number" style="width:55px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.88rem;padding:3px 7px;text-align:center" id="oqc-${o.id}" value="1" min="1" max="50" onclick="event.stopPropagation()" onchange="calcOptsTotalC()"></div></div>`:''}`).join('');
+  calcOptsTotalC();
+  document.getElementById('mc-opts').style.display='flex';
+}
+
+function togOptC(oid){
+  cSelOpts[oid]=!cSelOpts[oid];
+  const item=document.getElementById('oic-'+oid);
+  const chk=document.getElementById('chk-'+oid);
+  const qw=document.getElementById('qwc-'+oid);
+  if(item)item.classList.toggle('sel',cSelOpts[oid]);
+  if(chk){chk.style.background=cSelOpts[oid]?'var(--green)':'var(--bg)';chk.style.borderColor=cSelOpts[oid]?'var(--green)':'var(--border)';chk.innerHTML=cSelOpts[oid]?'<span style="color:#000;font-size:.7rem;font-weight:700">✓</span>':'';}
+  if(qw)qw.style.display=cSelOpts[oid]?'block':'none';
+  calcOptsTotalC();
+}
+function cNb(d){cNbPers=Math.max(1,cNbPers+d);document.getElementById('mc-nb').textContent=cNbPers;calcOptsTotalC();}
+function calcOptsTotalC(){
+  const f=cForms[cActId]?.find(x=>x.id===cFormId);if(!f)return;
+  let total=f.prix_par_personne?f.prix*cNbPers:f.prix,detail=[],duree=f.duree_min;
+  detail.push(f.prix_par_personne?`${f.nom} ×${cNbPers}=${fmtC(total)}`:`${f.nom}=${fmtC(total)}`);
+  (cOpts[cFormId]||[]).forEach(o=>{
+    if(!cSelOpts[o.id])return;
+    let q=o.type==='per_person'?cNbPers:o.type==='quantity'?(parseInt(document.getElementById('oqc-'+o.id)?.value)||1):1;
+    const p=o.prix*q;total+=p;if(o.duree_ajoutee_min>0)duree+=o.duree_ajoutee_min;
+    if(o.prix>0)detail.push(`${o.nom}${q>1?' ×'+q:''}=+${fmtC(p)}`);
+  });
+  document.getElementById('mc-total').textContent=fmtC(total);
+  document.getElementById('mc-detail').textContent=detail.join(' · ');
+}
+
+function addToCart(){
+  const act=cActs.find(a=>a.id===cActId),f=cForms[cActId]?.find(x=>x.id===cFormId);if(!f)return;
+  const date=document.getElementById('mc-date').value;
+  const heure=document.getElementById('mc-heure').value;
+  if(!heure){showToast('Heure arrivée obligatoire','error');return;}
+  const os=(cOpts[cFormId]||[]).filter(o=>cSelOpts[o.id]).map(o=>{
+    let q=o.type==='per_person'?cNbPers:o.type==='quantity'?(parseInt(document.getElementById('oqc-'+o.id)?.value)||1):1;
+    return{...o,qte:q};
+  });
+  const prixBase=f.prix_par_personne?f.prix*cNbPers:f.prix,prixOpts=os.reduce((s,o)=>s+o.prix*o.qte,0);
+  const duree=f.duree_min+os.reduce((s,o)=>s+(o.duree_ajoutee_min||0),0);
+  const nbJauge=cNbPers+os.filter(o=>o.ajoute_jauge).reduce((s,o)=>s+o.qte,0);
+  panier.push({id:Date.now()+Math.random(),type:'activite',aId:cActId,fId:cFormId,aNom:act?.nom,fNom:f.nom,prix:prixBase+prixOpts,nb:cNbPers,nbJauge,duree,os,fHibId:f.hiboutik_product_id,date,heure});
+  document.getElementById('mc-opts').style.display='none';
+  renderPanier();showToast(f.nom+' ajouté','success');
+}
+
+function addSimpleC(pid){
+  const p=cProds.find(x=>x.id===pid);if(!p)return;
+  const ex=panier.find(i=>i.type==='produit'&&i.pid===pid);
+  if(ex){ex.qty++;ex.prix=ex.prixU*ex.qty;renderPanier();return;}
+  panier.push({id:Date.now()+Math.random(),type:'produit',pid,nom:p.nom,prix:p.prix,prixU:p.prix,qty:1,hibId:p.hiboutik_product_id});
+  renderPanier();showToast(p.nom+' ajouté','success');
+}
+
+function renderPanier(){
+  const total=panier.reduce((s,i)=>s+i.prix,0);
+  document.getElementById('pan-count').textContent=panier.length;
+  document.getElementById('c-stotal').textContent=fmtC(total);
+  document.getElementById('c-total').textContent=fmtC(total);
+  const has=panier.length>0;
+  const btnCb=document.getElementById('btn-cb');
+  const btnEsp=document.getElementById('btn-esp');
+  if(btnCb)btnCb.disabled=!has;
+  if(btnEsp)btnEsp.disabled=!has;
+  const el=document.getElementById('pan-items');
+  if(!has){el.innerHTML='<div class="pan-empty"><div style="font-size:2rem;opacity:.3">🛒</div><div>Panier vide</div></div>';return;}
+  el.innerHTML=panier.map(item=>{
+    if(item.type==='activite')return`<div class="pan-item"><div class="pi-row"><div class="pi-nom">${item.aNom} — ${item.fNom}${item.nb>1?' ×'+item.nb:''}</div><div class="pi-prix">${fmtC(item.prix)}</div><button class="qb" onclick="delItemC('${item.id}')">🗑</button></div>${item.os.length?`<div class="pi-opts-tags">${item.os.map(o=>`<span class="pi-opt-tag">${o.nom}${o.qte>1?' ×'+o.qte:''}</span>`).join('')}</div>`:''}<div class="pi-meta">⏱ ${item.duree}min · 👥 ${item.nbJauge} pers.</div></div>`;
+    return`<div class="pan-item"><div class="pi-row"><div class="pi-nom">${item.nom}</div><div class="pi-prix">${fmtC(item.prix)}</div><div class="pi-qty"><button class="qb" onclick="chQtyC('${item.id}',-1)">−</button><span class="qn">${item.qty}</span><button class="qb" onclick="chQtyC('${item.id}',1)">+</button></div><button class="qb" onclick="delItemC('${item.id}')">🗑</button></div></div>`;
+  }).join('');
+}
+
+function delItemC(id){panier=panier.filter(i=>String(i.id)!==String(id));renderPanier();}
+function chQtyC(id,d){const i=panier.find(x=>String(x.id)===String(id));if(!i)return;i.qty=Math.max(1,i.qty+d);i.prix=i.prixU*i.qty;renderPanier();}
+function viderPanier(){if(panier.length&&!confirm('Vider le panier ?'))return;panier=[];renderPanier();}
+
+function openClientModalCaisse(){document.getElementById('cc-nom').value='';document.getElementById('cc-email').value='';document.getElementById('cc-tel').value='';document.getElementById('mc-client').style.display='flex';}
+function saveCaisseClient(){
+  const nom=document.getElementById('cc-nom').value.trim();if(!nom){showToast('Nom obligatoire','error');return;}
+  cClient={nom,email:document.getElementById('cc-email').value.trim(),tel:document.getElementById('cc-tel').value.trim()};
+  document.getElementById('client-add').style.display='none';document.getElementById('client-info').style.display='flex';
+  document.getElementById('ci-nom').textContent=cClient.nom;document.getElementById('ci-sub').textContent=[cClient.email,cClient.tel].filter(Boolean).join(' · ')||'Sans coordonnées';
+  document.getElementById('mc-client').style.display='none';showToast('Client ajouté','success');
+}
+function removeCaisseClient(){cClient=null;document.getElementById('client-add').style.display='flex';document.getElementById('client-info').style.display='none';}
+
+async function payerCB(){
+  if(!panier.length){alert('Panier vide');return;}
+  try{
+    await finaliserVente('cb');
+  }catch(e){
+    alert('ERREUR CB: '+e.message);
+    document.getElementById('btn-cb').disabled=false;
+    document.getElementById('btn-esp').disabled=false;
+  }
+}
+
+let espStr='';
+function openEspModal(){
+  espStr='';
+  const total=panier.reduce((s,i)=>s+i.prix,0);
+  document.getElementById('mc-esp-total').textContent=fmtC(total);
+  document.getElementById('mc-remis-display').textContent='0';
+  document.getElementById('mc-rendu').textContent='—';
+  document.getElementById('mc-rendu').className='rendu-v';
+  document.getElementById('btn-esp-ok').disabled=true;
+  document.getElementById('mc-esp').style.display='flex';
+}
+function nk(v){
+  if(v==='.'&&espStr.includes('.'))return;
+  if(espStr.length>=8)return;
+  espStr=espStr+v;
+  document.getElementById('mc-remis-display').textContent=espStr||'0';
+  updRendu();
+}
+function nkdel(){
+  espStr=espStr.slice(0,-1);
+  document.getElementById('mc-remis-display').textContent=espStr||'0';
+  updRendu();
+}
+function updRendu(){
+  const total=panier.reduce((s,i)=>s+i.prix,0);
+  const remis=parseFloat(espStr)||0;
+  const rendu=Math.round((remis-total)*100)/100;
+  const el=document.getElementById('mc-rendu'),btn=document.getElementById('btn-esp-ok');
+  if(!espStr){el.textContent='—';el.className='rendu-v';btn.disabled=true;return;}
+  el.textContent=fmtC(Math.abs(rendu));
+  el.className='rendu-v '+(rendu>=0?'rendu-pos':'rendu-neg');
+  btn.disabled=rendu<0;
+}
+async function finaliserEsp(){document.getElementById('mc-esp').style.display='none';await finaliserVente('especes');}
+
+async function finaliserVente(mode){
+  const total=panier.reduce((s,i)=>s+i.prix,0);
+  document.getElementById('btn-cb').disabled=true;document.getElementById('btn-esp').disabled=true;
+
+  // ── HIBOUTIK (indépendant — ne bloque pas Supabase si erreur) ──
+  let hibSaleId=null;
+  let hibMsg='Enregistrée localement';
+  try{
+    let hibClientId=null;
+    if(cClient&&HIB.url){
+      const r=await hiboutik('/customers/','POST',{customers_first_name:cClient.nom,customers_email:cClient.email||'',customers_phone:cClient.tel||''});
+      if(r)hibClientId=r.id||r.customers_id||null;
+    }
+    if(HIB.url){
+      const sp={currency_id:1};if(hibClientId)sp.customers_id=hibClientId;
+      const sale=await hiboutik('/sales/','POST',sp);
+      if(sale){
+        hibSaleId=sale.id||sale.sale_id||null;
+        for(const item of panier){
+          if(item.type==='activite'){
+            if(item.fHibId)await hiboutik('/sales/add_product/','POST',{sale_id:hibSaleId,product_id:item.fHibId,product_quantity:item.nb||1});
+            for(const o of item.os){if(o.hiboutik_product_id)await hiboutik('/sales/add_product/','POST',{sale_id:hibSaleId,product_id:o.hiboutik_product_id,product_quantity:o.qte||1});}
+          }else if(item.hibId){await hiboutik('/sales/add_product/','POST',{sale_id:hibSaleId,product_id:item.hibId,product_quantity:item.qty||1});}
+        }
+        await hiboutik('/sales/pay/','POST',{sale_id:hibSaleId,payment_amount:total,payment_type:mode==='cb'?'CB':'ESP'});
+        await hiboutik('/sales/close/','POST',{sale_id:hibSaleId});
+        hibMsg='Vente #'+hibSaleId+' dans Hiboutik ✓';
+      }
+    }
+  }catch(e){console.warn('Hiboutik:',e.message);hibMsg='⚠️ Hiboutik non synchronisé';}
+
+  // ── SUPABASE (toujours exécuté) ──
+  try{
+    const today=new Date().toISOString().split('T')[0],heure=new Date().toTimeString().slice(0,5);
+    for(const item of panier){
+      if(item.type==='activite'){
+        await sb('reservations','POST',{activite_id:item.aId,formule_id:item.fId,date:item.date||today,heure_arrivee:item.heure||heure,duree_min:item.duree||120,nb_personnes:item.nbJauge||item.nb||1,nom_client:cClient?.nom||null,email_client:cClient?.email||null,telephone_client:cClient?.tel||null,montant_total:item.prix,montant_acompte:item.prix,statut:'soldee',origine:'caisse',hiboutik_sale_id:hibSaleId});
+      } else {
+        await sb('ventes_caisse','POST',{produit_id:item.pid,quantite:item.qty||1,prix_unitaire:item.prixU||item.prix,mode_paiement:mode,hiboutik_sale_id:hibSaleId});
+      }
+    }
+    // Confirmation
+    const details=panier.map(i=>`<div class="cd-line"><span>${i.type==='activite'?i.fNom:i.nom}${(i.qty||i.nb)>1?' ×'+(i.qty||i.nb):''}</span><span>${fmtC(i.prix)}</span></div>`).join('');
+    document.getElementById('mc-confirm-msg').textContent=hibMsg;
+    document.getElementById('mc-confirm-details').innerHTML=details+`<div class="cd-line"><span>${mode==='cb'?'💳 CB':'💵 Espèces'}</span><span></span></div><div class="cd-line"><span>TOTAL</span><span>${fmtC(total)}</span></div>`;
+    document.getElementById('mc-confirm').style.display='flex';
+    rafraichirJauges();
+  }catch(e){
+    alert('ERREUR SUPABASE: '+e.message);
+    showToast('Erreur enregistrement : '+e.message,'error');
+    document.getElementById('btn-cb').disabled=false;
+    document.getElementById('btn-esp').disabled=false;
+  }
+}
+
+function nouvelleVente(){
+  panier=[];cClient=null;
+  document.getElementById('client-add').style.display='flex';document.getElementById('client-info').style.display='none';
+  document.getElementById('mc-confirm').style.display='none';
+  renderPanier();
+}
+
+
+// ── TOAST ──
+let toastTimeout;
+function showToast(msg,type='success'){const t=document.getElementById('toast');t.className='show '+type;t.innerHTML=(type==='success'?'✅':'❌')+' '+msg;clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>t.className='',3000);}
+
+// ── DÉMARRAGE ──
+document.addEventListener('DOMContentLoaded', () => initApp());
+</script>
+</body>
+</html>
