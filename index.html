@@ -1532,31 +1532,57 @@ async function localGet(table, params){
   }
 }
 
-async function loadChecklistHistoryRows(){
-  // Supabase/PostgREST plafonne une reponse a 1 000 lignes dans ce projet.
-  // La table contient plusieurs milliers d'etats : il faut donc la paginer.
-  if(!SUPA_READY) return cacheRead("checklists_histo");
-  var pageSize=1000, from=0, all=[];
+// Charger uniquement la date demandee : l'historique complet n'est plus requis au demarrage.
+async function loadChecklistHistoryRows(dateStr){
+  var fallback=cacheRead("checklists_histo").filter(function(x){return x.date===dateStr;});
+  if(!SUPA_READY)return fallback;
+  var all=[],pageSize=1000,from=0;
   try{
     while(true){
-      var res=await SUPA.from("checklists_histo")
-        .select("*")
-        .order("date",{ascending:false})
-        .order("updated_at",{ascending:false})
+      var res=await SUPA.from("checklists_histo").select("*")
+        .eq("date",dateStr).order("updated_at",{ascending:false})
         .range(from,from+pageSize-1);
-      if(res.error) throw res.error;
+      if(res.error)throw res.error;
       var page=(res.data||[]).map(unpackRow);
       all=all.concat(page);
-      if(page.length<pageSize) break;
+      if(page.length<pageSize||from>=49000)break;
       from+=pageSize;
-      if(from>=50000) break;
     }
-    cacheWrite("checklists_histo",all);
     return all;
-  }catch(e){
-    console.warn("Checklist history fallback",e);
-    return cacheRead("checklists_histo");
+  }catch(e){console.warn("Checklist date fallback",dateStr,e);return fallback;}
+}
+function applyChecklistRowsForDate(dateStr,checks){
+  var latest={};
+  function version(c){
+    var id=String(c.id||"");
+    if(id.indexOf("zz_checkstate_")===0)return Number.MAX_SAFE_INTEGER;
+    var m=id.match(/checklists_histo_(\d{10,})_/);
+    return m?parseInt(m[1],10):0;
   }
+  (checks||[]).forEach(function(c){
+    if(c.date!==dateStr||!c.checklist||!c.task_id)return;
+    var key=c.checklist+"|"+c.task_id;
+    if(!latest[key]||version(c)>=version(latest[key]))latest[key]=c;
+  });
+  if(!CL_HISTO[dateStr])CL_HISTO[dateStr]={};
+  Object.keys(latest).forEach(function(key){
+    var c=latest[key];
+    if(!CL_HISTO[dateStr][c.checklist])CL_HISTO[dateStr][c.checklist]={};
+    CL_HISTO[dateStr][c.checklist][c.task_id]=!!c.done;
+    if(dateStr===localDateString(new Date()))CS[c.task_id]=!!c.done;
+  });
+}
+var SWEETY_CHECK_DATES={};
+function ensureChecklistDate(dateStr){
+  if(SWEETY_CHECK_DATES[dateStr]===true)return Promise.resolve(true);
+  if(SWEETY_CHECK_DATES[dateStr])return SWEETY_CHECK_DATES[dateStr];
+  var promise=loadChecklistHistoryRows(dateStr).then(function(rows){
+    applyChecklistRowsForDate(dateStr,rows);
+    SWEETY_CHECK_DATES[dateStr]=true;
+    return true;
+  },function(e){console.error("Checklist date",e);SWEETY_CHECK_DATES[dateStr]=null;return false;});
+  SWEETY_CHECK_DATES[dateStr]=promise;
+  return promise;
 }
 async function localPost(table, body){
   var list=Array.isArray(body)?body:(body?[body]:[]); if(!list.length) return true;
@@ -1951,44 +1977,6 @@ async function loadAllData() {
       });
     }
 
-    var temps = await localGet("temperatures", "order=date.asc&limit=50000");
-    if (temps) {
-      TEMP_HISTO = temps.map(function(t) {
-        return {eqId:t.eq_id, val:parseFloat(t.valeur), date:t.date, time:t.heure||""};
-      });
-      // Update EQUIPS lastVal/lastDate from most recent
-      TEMP_HISTO.forEach(function(r) {
-        var eq = EQUIPS.find(function(e) { return e.id===r.eqId; });
-        if (eq && (!eq.lastDate || r.date >= eq.lastDate)) {
-          eq.lastVal = r.val; eq.lastDate = r.date;
-        }
-      });
-    }
-
-    // Livraisons
-    var livs = await localGet("livraisons", "order=date.desc&limit=50000");
-    if (livs) {
-      LIVRAISONS = livs.map(function(l) {
-        return {id:l.id, fourn:l.fournisseur, date:l.date, heure:l.heure||"",
-          agent:l.agent||"", bl:l.bl||"", types:l.types||{},
-          tempFrais:l.temp_frais, tempSurgele:l.temp_surgele,
-          statut:l.statut||"ok", anomalie:l.anomalie||"",
-          action:l.action||"", produits:l.produits||"", note:l.note||"",
-          savedAt:l.created_at||""};
-      });
-    }
-
-    // Incidents
-    var incs = await localGet("incidents", "order=date.desc&limit=50000");
-    if (incs) {
-      INCIDENTS = incs.map(function(i) {
-        return {id:i.id, type:i.type, date:i.date, heure:i.heure||"",
-          agent:i.agent||"", description:i.description||"",
-          action:i.action||"", statut:i.statut||"ouvert",
-          suivi:i.suivi||[], createdAt:i.created_at||""};
-      });
-    }
-
     // Controles periodiques
     var ctrls = await localGet("controles_periodiques", "order=prochain_controle.asc");
     if (ctrls && ctrls.length) {
@@ -2026,40 +2014,9 @@ async function loadAllData() {
       });
     }
 
-    // Checklists - tout l'historique
-    var todayStr2 = localDateString(new Date());
-    var checks = await loadChecklistHistoryRows();
-    CS = {};
-    CL_HISTO = {};
-    if(checks && checks.length){
-
-      // Historique legacy : avant le correctif, plusieurs lignes pouvaient exister
-      // pour la meme date/checklist/tache. Les anciens IDs ont la forme
-      // checklists_histo_<Date.now()>_<suffixe>. On garde donc le plus grand timestamp.
-      // Depuis le correctif, l'ID stable zz_checkstate_* est la source de reference
-      // pour cette date/checklist/tache et doit toujours gagner sur les anciennes lignes.
-      var latestCheckByKey = {};
-      function checkVersion(c){
-        var id=String(c.id||"");
-        if(id.indexOf("zz_checkstate_")===0) return Number.MAX_SAFE_INTEGER;
-        var m=id.match(/checklists_histo_(\d{10,})_/);
-        return m ? parseInt(m[1],10) : 0;
-      }
-      checks.forEach(function(c){
-        if(!c.date || !c.checklist || !c.task_id) return;
-        var key=c.date+"|"+c.checklist+"|"+c.task_id;
-        var prev=latestCheckByKey[key];
-        if(!prev || checkVersion(c)>=checkVersion(prev)) latestCheckByKey[key]=c;
-      });
-
-      Object.keys(latestCheckByKey).forEach(function(key){
-        var c=latestCheckByKey[key];
-        if(c.date === todayStr2) CS[c.task_id] = !!c.done;
-        if(!CL_HISTO[c.date]) CL_HISTO[c.date] = {};
-        if(!CL_HISTO[c.date][c.checklist]) CL_HISTO[c.date][c.checklist] = {};
-        CL_HISTO[c.date][c.checklist][c.task_id] = !!c.done;
-      });
-    }
+    // Checklist du jour uniquement : les autres dates sont chargees a la demande.
+    CS={}; CL_HISTO={};
+    await ensureChecklistDate(localDateString(new Date()));
 
     // Historique controles structures
     var strCtrl = await localGet("structures_ctrl", "order=date.asc&limit=50000");
@@ -2104,37 +2061,7 @@ async function loadAllData() {
       });
     }
 
-    // Controles periodiques - charger depuis  si disponibles
-    var ctrls2 = await localGet("controles_periodiques",
-      "order=prochain_controle.asc&limit=200");
-    if(ctrls2 && ctrls2.length){
-      ctrls2.forEach(function(c){
-        var existing=CTRLS.find(function(x){return x.id===c.id;});
-        if(existing){
-          existing.dernier=c.dernier_controle||existing.dernier;
-          existing.prochain=c.prochain_controle||existing.prochain;
-          existing.statut=c.statut||existing.statut;
-          existing.note=c.note||existing.note;
-        }
-      });
-    }
-
     DB_LOADED = true;
-    // Load courses
-    await loadCourses();
-
-    // Load fournisseurs
-    var fourns = await localGet("fournisseurs","order=nom.asc&limit=200");
-    if(fourns && fourns.length){
-      FOURNISSEURS = fourns.map(function(f){ return f.nom; });
-    }
-    // Ensure default Sweety Sweety fournisseurs are present
-    ["Sysco","Distram","Promocash","Super U"].forEach(function(f){
-      if(FOURNISSEURS.indexOf(f)<0) FOURNISSEURS.push(f);
-    });
-    FOURNISSEURS.sort();
-    updateFournDatalist();
-
     // Load planning from 
     var wDates=[];
     for(var dd=0;dd<7;dd++) wDates.push(getWeekDayDate(dd));
@@ -2706,6 +2633,78 @@ function deleteEquipeEmp(id){
 }
 
 // ── SCREENS ────────────────────────────────────────────────────────────────────
+// Chargements secondaires a la demande : aucun changement de donnees ni de schema.
+var SWEETY_LAZY={};
+function sweetyLazyOnce(key,loader){
+  if(SWEETY_LAZY[key]===true)return Promise.resolve(true);
+  if(SWEETY_LAZY[key])return SWEETY_LAZY[key];
+  var pending=Promise.resolve().then(loader).then(function(ok){
+    if(ok!==false){SWEETY_LAZY[key]=true;return true;}
+    SWEETY_LAZY[key]=null;return false;
+  },function(err){console.error("Chargement "+key,err);SWEETY_LAZY[key]=null;showToast("Erreur chargement "+key);return false;});
+  SWEETY_LAZY[key]=pending;
+  return pending;
+}
+function sweetyLoadLivraisons(){return sweetyLazyOnce("livraisons",async function(){
+    var livs = await localGet("livraisons", "order=date.desc&limit=50000");
+    if (livs) {
+      LIVRAISONS = livs.map(function(l) {
+        return {id:l.id, fourn:l.fournisseur, date:l.date, heure:l.heure||"",
+          agent:l.agent||"", bl:l.bl||"", types:l.types||{},
+          tempFrais:l.temp_frais, tempSurgele:l.temp_surgele,
+          statut:l.statut||"ok", anomalie:l.anomalie||"",
+          action:l.action||"", produits:l.produits||"", note:l.note||"",
+          savedAt:l.created_at||""};
+      });
+    }
+
+
+return true;});}
+function sweetyLoadIncidents(){return sweetyLazyOnce("incidents",async function(){
+    var incs = await localGet("incidents", "order=date.desc&limit=50000");
+    if (incs) {
+      INCIDENTS = incs.map(function(i) {
+        return {id:i.id, type:i.type, date:i.date, heure:i.heure||"",
+          agent:i.agent||"", description:i.description||"",
+          action:i.action||"", statut:i.statut||"ouvert",
+          suivi:i.suivi||[], createdAt:i.created_at||""};
+      });
+    }
+
+
+return true;});}
+function sweetyLoadTemperatures(){return sweetyLazyOnce("temperatures",async function(){
+    var temps = await localGet("temperatures", "order=date.asc&limit=50000");
+    if (temps) {
+      TEMP_HISTO = temps.map(function(t) {
+        return {eqId:t.eq_id, val:parseFloat(t.valeur), date:t.date, time:t.heure||""};
+      });
+      // Update EQUIPS lastVal/lastDate from most recent
+      TEMP_HISTO.forEach(function(r) {
+        var eq = EQUIPS.find(function(e) { return e.id===r.eqId; });
+        if (eq && (!eq.lastDate || r.date >= eq.lastDate)) {
+          eq.lastVal = r.val; eq.lastDate = r.date;
+        }
+      });
+    }
+
+
+return true;});}
+function sweetyLoadFournisseurs(){return sweetyLazyOnce("fournisseurs",async function(){
+    // Load fournisseurs
+    var fourns = await localGet("fournisseurs","order=nom.asc&limit=200");
+    if(fourns && fourns.length){
+      FOURNISSEURS = fourns.map(function(f){ return f.nom; });
+    }
+    // Ensure default Sweety Sweety fournisseurs are present
+    ["Sysco","Distram","Promocash","Super U"].forEach(function(f){
+      if(FOURNISSEURS.indexOf(f)<0) FOURNISSEURS.push(f);
+    });
+    FOURNISSEURS.sort();
+    updateFournDatalist();
+
+
+return true;});}
 function showScreen(n){
   document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
   document.querySelectorAll(".ni").forEach(function(x){x.classList.remove("active");});
@@ -2717,7 +2716,7 @@ function showScreen(n){
   if(n==="communication-faq-detail"){if(!commActive())return showScreen("communication");commRenderFaqDetail();}
   if(n==="planning")renderPlanning();
   if(n==="equipe"){renderEquipeList();document.getElementById("equipeListEl").classList.remove("hidden");document.getElementById("equipeDetail").classList.add("hidden");}
-  if(n==="controles"){CTRL_DATE_OFFSET=0;ctrlUpdateDateNav();renderControles();renderPeriodik2();}
+  if(n==="controles"){CTRL_DATE_OFFSET=0;ctrlUpdateDateNav();renderControles();renderPeriodik2();sweetyLoadTemperatures().then(function(){if(document.getElementById("screen-controles").classList.contains("active"))renderControles();});}
   if(n==="checklists"){
     CL_DATE_OFFSET=0;
     clUpdateDateNav();
@@ -4986,6 +4985,8 @@ var CURRENT_LIV_TAB = "today";
 
 function openLivraisons(){
   openModal("mLivraisons");
+  sweetyLoadFournisseurs();
+  sweetyLoadLivraisons().then(function(){renderLivraisons(CURRENT_LIV_TAB);});
   setTimeout(function(){
     switchLivTab(CURRENT_LIV_TAB, document.querySelector("#livTabs .ctab.active")||document.querySelector("#livTabs .ctab"));
   }, 50);
@@ -5526,8 +5527,10 @@ function clGetDateStr(){
 }
 function clChangeDate(delta){
   CL_DATE_OFFSET+=delta;
+  var dateStr=clGetDateStr();
   clUpdateDateNav();
   renderCL(CL);
+  ensureChecklistDate(dateStr).then(function(ok){if(ok&&clGetDateStr()===dateStr)renderCL(CL);});
 }
 function clUpdateDateNav(){
   var d=new Date(); d.setDate(d.getDate()+CL_DATE_OFFSET);
@@ -6705,6 +6708,7 @@ async function deleteCourseDB(id){
 
 function openCourses(){
   openModal("mCourses");
+  sweetyLoadFournisseurs();
   loadCourses().then(function(){ renderCourses(); });
 }
 
@@ -8650,7 +8654,7 @@ function switchControleTab(tab, btn){
   if(h) h.style.display = tab==="haccp"    ?"block":"none";
   if(p) p.style.display = tab==="periodik" ?"block":"none";
   if(i) i.style.display = tab==="incidents"?"block":"none";
-  if(tab==="incidents")   renderIncidents();
+  if(tab==="incidents") sweetyLoadIncidents().then(function(){renderIncidents();});
   else if(tab==="periodik") renderPeriodik2();
   else renderControles();
 }
