@@ -1556,7 +1556,7 @@ function applyChecklistRowsForDate(dateStr,checks){
   function version(c){
     var id=String(c.id||"");
     if(id.indexOf("zz_checkstate_")===0)return Number.MAX_SAFE_INTEGER;
-    var m=id.match(/checklists_histo_(\\d{10,})_/);
+    var m=id.match(/checklists_histo_(\d{10,})_/);
     return m?parseInt(m[1],10):0;
   }
   (checks||[]).forEach(function(c){
@@ -4985,6 +4985,7 @@ var CURRENT_LIV_TAB = "today";
 
 function openLivraisons(){
   openModal("mLivraisons");
+  sweetyLoadFournisseurs();
   sweetyLoadLivraisons().then(function(){renderLivraisons(CURRENT_LIV_TAB);});
   setTimeout(function(){
     switchLivTab(CURRENT_LIV_TAB, document.querySelector("#livTabs .ctab.active")||document.querySelector("#livTabs .ctab"));
