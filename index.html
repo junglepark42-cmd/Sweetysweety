@@ -1532,31 +1532,57 @@ async function localGet(table, params){
   }
 }
 
-async function loadChecklistHistoryRows(){
-  // Supabase/PostgREST plafonne une reponse a 1 000 lignes dans ce projet.
-  // La table contient plusieurs milliers d'etats : il faut donc la paginer.
-  if(!SUPA_READY) return cacheRead("checklists_histo");
-  var pageSize=1000, from=0, all=[];
+// Charger uniquement la date demandee : l'historique complet n'est plus requis au demarrage.
+async function loadChecklistHistoryRows(dateStr){
+  var fallback=cacheRead("checklists_histo").filter(function(x){return x.date===dateStr;});
+  if(!SUPA_READY)return fallback;
+  var all=[],pageSize=1000,from=0;
   try{
     while(true){
-      var res=await SUPA.from("checklists_histo")
-        .select("*")
-        .order("date",{ascending:false})
-        .order("updated_at",{ascending:false})
+      var res=await SUPA.from("checklists_histo").select("*")
+        .eq("date",dateStr).order("updated_at",{ascending:false})
         .range(from,from+pageSize-1);
-      if(res.error) throw res.error;
+      if(res.error)throw res.error;
       var page=(res.data||[]).map(unpackRow);
       all=all.concat(page);
-      if(page.length<pageSize) break;
+      if(page.length<pageSize||from>=49000)break;
       from+=pageSize;
-      if(from>=50000) break;
     }
-    cacheWrite("checklists_histo",all);
     return all;
-  }catch(e){
-    console.warn("Checklist history fallback",e);
-    return cacheRead("checklists_histo");
+  }catch(e){console.warn("Checklist date fallback",dateStr,e);return fallback;}
+}
+function applyChecklistRowsForDate(dateStr,checks){
+  var latest={};
+  function version(c){
+    var id=String(c.id||"");
+    if(id.indexOf("zz_checkstate_")===0)return Number.MAX_SAFE_INTEGER;
+    var m=id.match(/checklists_histo_(\\d{10,})_/);
+    return m?parseInt(m[1],10):0;
   }
+  (checks||[]).forEach(function(c){
+    if(c.date!==dateStr||!c.checklist||!c.task_id)return;
+    var key=c.checklist+"|"+c.task_id;
+    if(!latest[key]||version(c)>=version(latest[key]))latest[key]=c;
+  });
+  if(!CL_HISTO[dateStr])CL_HISTO[dateStr]={};
+  Object.keys(latest).forEach(function(key){
+    var c=latest[key];
+    if(!CL_HISTO[dateStr][c.checklist])CL_HISTO[dateStr][c.checklist]={};
+    CL_HISTO[dateStr][c.checklist][c.task_id]=!!c.done;
+    if(dateStr===localDateString(new Date()))CS[c.task_id]=!!c.done;
+  });
+}
+var SWEETY_CHECK_DATES={};
+function ensureChecklistDate(dateStr){
+  if(SWEETY_CHECK_DATES[dateStr]===true)return Promise.resolve(true);
+  if(SWEETY_CHECK_DATES[dateStr])return SWEETY_CHECK_DATES[dateStr];
+  var promise=loadChecklistHistoryRows(dateStr).then(function(rows){
+    applyChecklistRowsForDate(dateStr,rows);
+    SWEETY_CHECK_DATES[dateStr]=true;
+    return true;
+  },function(e){console.error("Checklist date",e);SWEETY_CHECK_DATES[dateStr]=null;return false;});
+  SWEETY_CHECK_DATES[dateStr]=promise;
+  return promise;
 }
 async function localPost(table, body){
   var list=Array.isArray(body)?body:(body?[body]:[]); if(!list.length) return true;
@@ -1988,40 +2014,9 @@ async function loadAllData() {
       });
     }
 
-    // Checklists - tout l'historique
-    var todayStr2 = localDateString(new Date());
-    var checks = await loadChecklistHistoryRows();
-    CS = {};
-    CL_HISTO = {};
-    if(checks && checks.length){
-
-      // Historique legacy : avant le correctif, plusieurs lignes pouvaient exister
-      // pour la meme date/checklist/tache. Les anciens IDs ont la forme
-      // checklists_histo_<Date.now()>_<suffixe>. On garde donc le plus grand timestamp.
-      // Depuis le correctif, l'ID stable zz_checkstate_* est la source de reference
-      // pour cette date/checklist/tache et doit toujours gagner sur les anciennes lignes.
-      var latestCheckByKey = {};
-      function checkVersion(c){
-        var id=String(c.id||"");
-        if(id.indexOf("zz_checkstate_")===0) return Number.MAX_SAFE_INTEGER;
-        var m=id.match(/checklists_histo_(\d{10,})_/);
-        return m ? parseInt(m[1],10) : 0;
-      }
-      checks.forEach(function(c){
-        if(!c.date || !c.checklist || !c.task_id) return;
-        var key=c.date+"|"+c.checklist+"|"+c.task_id;
-        var prev=latestCheckByKey[key];
-        if(!prev || checkVersion(c)>=checkVersion(prev)) latestCheckByKey[key]=c;
-      });
-
-      Object.keys(latestCheckByKey).forEach(function(key){
-        var c=latestCheckByKey[key];
-        if(c.date === todayStr2) CS[c.task_id] = !!c.done;
-        if(!CL_HISTO[c.date]) CL_HISTO[c.date] = {};
-        if(!CL_HISTO[c.date][c.checklist]) CL_HISTO[c.date][c.checklist] = {};
-        CL_HISTO[c.date][c.checklist][c.task_id] = !!c.done;
-      });
-    }
+    // Checklist du jour uniquement : les autres dates sont chargees a la demande.
+    CS={}; CL_HISTO={};
+    await ensureChecklistDate(localDateString(new Date()));
 
     // Historique controles structures
     var strCtrl = await localGet("structures_ctrl", "order=date.asc&limit=50000");
@@ -5531,8 +5526,10 @@ function clGetDateStr(){
 }
 function clChangeDate(delta){
   CL_DATE_OFFSET+=delta;
+  var dateStr=clGetDateStr();
   clUpdateDateNav();
   renderCL(CL);
+  ensureChecklistDate(dateStr).then(function(ok){if(ok&&clGetDateStr()===dateStr)renderCL(CL);});
 }
 function clUpdateDateNav(){
   var d=new Date(); d.setDate(d.getDate()+CL_DATE_OFFSET);
