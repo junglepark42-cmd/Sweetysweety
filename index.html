@@ -1951,44 +1951,6 @@ async function loadAllData() {
       });
     }
 
-    var temps = await localGet("temperatures", "order=date.asc&limit=50000");
-    if (temps) {
-      TEMP_HISTO = temps.map(function(t) {
-        return {eqId:t.eq_id, val:parseFloat(t.valeur), date:t.date, time:t.heure||""};
-      });
-      // Update EQUIPS lastVal/lastDate from most recent
-      TEMP_HISTO.forEach(function(r) {
-        var eq = EQUIPS.find(function(e) { return e.id===r.eqId; });
-        if (eq && (!eq.lastDate || r.date >= eq.lastDate)) {
-          eq.lastVal = r.val; eq.lastDate = r.date;
-        }
-      });
-    }
-
-    // Livraisons
-    var livs = await localGet("livraisons", "order=date.desc&limit=50000");
-    if (livs) {
-      LIVRAISONS = livs.map(function(l) {
-        return {id:l.id, fourn:l.fournisseur, date:l.date, heure:l.heure||"",
-          agent:l.agent||"", bl:l.bl||"", types:l.types||{},
-          tempFrais:l.temp_frais, tempSurgele:l.temp_surgele,
-          statut:l.statut||"ok", anomalie:l.anomalie||"",
-          action:l.action||"", produits:l.produits||"", note:l.note||"",
-          savedAt:l.created_at||""};
-      });
-    }
-
-    // Incidents
-    var incs = await localGet("incidents", "order=date.desc&limit=50000");
-    if (incs) {
-      INCIDENTS = incs.map(function(i) {
-        return {id:i.id, type:i.type, date:i.date, heure:i.heure||"",
-          agent:i.agent||"", description:i.description||"",
-          action:i.action||"", statut:i.statut||"ouvert",
-          suivi:i.suivi||[], createdAt:i.created_at||""};
-      });
-    }
-
     // Controles periodiques
     var ctrls = await localGet("controles_periodiques", "order=prochain_controle.asc");
     if (ctrls && ctrls.length) {
@@ -2104,37 +2066,7 @@ async function loadAllData() {
       });
     }
 
-    // Controles periodiques - charger depuis  si disponibles
-    var ctrls2 = await localGet("controles_periodiques",
-      "order=prochain_controle.asc&limit=200");
-    if(ctrls2 && ctrls2.length){
-      ctrls2.forEach(function(c){
-        var existing=CTRLS.find(function(x){return x.id===c.id;});
-        if(existing){
-          existing.dernier=c.dernier_controle||existing.dernier;
-          existing.prochain=c.prochain_controle||existing.prochain;
-          existing.statut=c.statut||existing.statut;
-          existing.note=c.note||existing.note;
-        }
-      });
-    }
-
     DB_LOADED = true;
-    // Load courses
-    await loadCourses();
-
-    // Load fournisseurs
-    var fourns = await localGet("fournisseurs","order=nom.asc&limit=200");
-    if(fourns && fourns.length){
-      FOURNISSEURS = fourns.map(function(f){ return f.nom; });
-    }
-    // Ensure default Sweety Sweety fournisseurs are present
-    ["Sysco","Distram","Promocash","Super U"].forEach(function(f){
-      if(FOURNISSEURS.indexOf(f)<0) FOURNISSEURS.push(f);
-    });
-    FOURNISSEURS.sort();
-    updateFournDatalist();
-
     // Load planning from 
     var wDates=[];
     for(var dd=0;dd<7;dd++) wDates.push(getWeekDayDate(dd));
@@ -2706,6 +2638,78 @@ function deleteEquipeEmp(id){
 }
 
 // ── SCREENS ────────────────────────────────────────────────────────────────────
+// Chargements secondaires a la demande : aucun changement de donnees ni de schema.
+var SWEETY_LAZY={};
+function sweetyLazyOnce(key,loader){
+  if(SWEETY_LAZY[key]===true)return Promise.resolve(true);
+  if(SWEETY_LAZY[key])return SWEETY_LAZY[key];
+  var pending=Promise.resolve().then(loader).then(function(ok){
+    if(ok!==false){SWEETY_LAZY[key]=true;return true;}
+    SWEETY_LAZY[key]=null;return false;
+  },function(err){console.error("Chargement "+key,err);SWEETY_LAZY[key]=null;showToast("Erreur chargement "+key);return false;});
+  SWEETY_LAZY[key]=pending;
+  return pending;
+}
+function sweetyLoadLivraisons(){return sweetyLazyOnce("livraisons",async function(){
+    var livs = await localGet("livraisons", "order=date.desc&limit=50000");
+    if (livs) {
+      LIVRAISONS = livs.map(function(l) {
+        return {id:l.id, fourn:l.fournisseur, date:l.date, heure:l.heure||"",
+          agent:l.agent||"", bl:l.bl||"", types:l.types||{},
+          tempFrais:l.temp_frais, tempSurgele:l.temp_surgele,
+          statut:l.statut||"ok", anomalie:l.anomalie||"",
+          action:l.action||"", produits:l.produits||"", note:l.note||"",
+          savedAt:l.created_at||""};
+      });
+    }
+
+
+return true;});}
+function sweetyLoadIncidents(){return sweetyLazyOnce("incidents",async function(){
+    var incs = await localGet("incidents", "order=date.desc&limit=50000");
+    if (incs) {
+      INCIDENTS = incs.map(function(i) {
+        return {id:i.id, type:i.type, date:i.date, heure:i.heure||"",
+          agent:i.agent||"", description:i.description||"",
+          action:i.action||"", statut:i.statut||"ouvert",
+          suivi:i.suivi||[], createdAt:i.created_at||""};
+      });
+    }
+
+
+return true;});}
+function sweetyLoadTemperatures(){return sweetyLazyOnce("temperatures",async function(){
+    var temps = await localGet("temperatures", "order=date.asc&limit=50000");
+    if (temps) {
+      TEMP_HISTO = temps.map(function(t) {
+        return {eqId:t.eq_id, val:parseFloat(t.valeur), date:t.date, time:t.heure||""};
+      });
+      // Update EQUIPS lastVal/lastDate from most recent
+      TEMP_HISTO.forEach(function(r) {
+        var eq = EQUIPS.find(function(e) { return e.id===r.eqId; });
+        if (eq && (!eq.lastDate || r.date >= eq.lastDate)) {
+          eq.lastVal = r.val; eq.lastDate = r.date;
+        }
+      });
+    }
+
+
+return true;});}
+function sweetyLoadFournisseurs(){return sweetyLazyOnce("fournisseurs",async function(){
+    // Load fournisseurs
+    var fourns = await localGet("fournisseurs","order=nom.asc&limit=200");
+    if(fourns && fourns.length){
+      FOURNISSEURS = fourns.map(function(f){ return f.nom; });
+    }
+    // Ensure default Sweety Sweety fournisseurs are present
+    ["Sysco","Distram","Promocash","Super U"].forEach(function(f){
+      if(FOURNISSEURS.indexOf(f)<0) FOURNISSEURS.push(f);
+    });
+    FOURNISSEURS.sort();
+    updateFournDatalist();
+
+
+return true;});}
 function showScreen(n){
   document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("active");});
   document.querySelectorAll(".ni").forEach(function(x){x.classList.remove("active");});
@@ -2717,7 +2721,7 @@ function showScreen(n){
   if(n==="communication-faq-detail"){if(!commActive())return showScreen("communication");commRenderFaqDetail();}
   if(n==="planning")renderPlanning();
   if(n==="equipe"){renderEquipeList();document.getElementById("equipeListEl").classList.remove("hidden");document.getElementById("equipeDetail").classList.add("hidden");}
-  if(n==="controles"){CTRL_DATE_OFFSET=0;ctrlUpdateDateNav();renderControles();renderPeriodik2();}
+  if(n==="controles"){CTRL_DATE_OFFSET=0;ctrlUpdateDateNav();renderControles();renderPeriodik2();sweetyLoadTemperatures().then(function(){if(document.getElementById("screen-controles").classList.contains("active"))renderControles();});}
   if(n==="checklists"){
     CL_DATE_OFFSET=0;
     clUpdateDateNav();
@@ -4986,6 +4990,7 @@ var CURRENT_LIV_TAB = "today";
 
 function openLivraisons(){
   openModal("mLivraisons");
+  sweetyLoadLivraisons().then(function(){renderLivraisons(CURRENT_LIV_TAB);});
   setTimeout(function(){
     switchLivTab(CURRENT_LIV_TAB, document.querySelector("#livTabs .ctab.active")||document.querySelector("#livTabs .ctab"));
   }, 50);
@@ -6705,6 +6710,7 @@ async function deleteCourseDB(id){
 
 function openCourses(){
   openModal("mCourses");
+  sweetyLoadFournisseurs();
   loadCourses().then(function(){ renderCourses(); });
 }
 
@@ -8650,7 +8656,7 @@ function switchControleTab(tab, btn){
   if(h) h.style.display = tab==="haccp"    ?"block":"none";
   if(p) p.style.display = tab==="periodik" ?"block":"none";
   if(i) i.style.display = tab==="incidents"?"block":"none";
-  if(tab==="incidents")   renderIncidents();
+  if(tab==="incidents") sweetyLoadIncidents().then(function(){renderIncidents();});
   else if(tab==="periodik") renderPeriodik2();
   else renderControles();
 }
